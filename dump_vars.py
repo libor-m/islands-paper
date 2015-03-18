@@ -18,7 +18,9 @@ import itertools
 
 import vcf
 import pybedtools
+import pysam
 
+# workaround for the half broken pybedtools
 def pybed_get_interval(pblist, interval):
     """get features in interval for sorted list of intervals
 
@@ -50,6 +52,14 @@ def pybed_find_features(ilist, chrom, pos):
         if i.start > pos:
             return
 
+def fetch_intervals(ti, interval):
+    """fetch pybedtools.Intervals from tabix indexed file
+    ti is pysam.Tabixfile
+    interval is pybedtools.Interval
+    """
+    mx = [l.split("\t") for l in ti.fetch(interval.chrom, interval.start, interval.stop)]
+    return [pybedtools.cbedtools.create_interval_from_list(fs) for fs in mx]
+
 def print_header():
     print "\t".join([
         'chrom',
@@ -78,7 +88,10 @@ def main():
         sys.exit("use: %s gff variants" % sys.argv[0])
 
     # load all the annotations, because pybedtools is broken..
-    annotations = list(pybedtools.BedTool(sys.argv[1]))
+    annotations = pybedtools.BedTool(sys.argv[1])
+    annotations._isbam = False
+    an_tabix = pysam.Tabixfile(sys.argv[1])
+
     variants = vcf.Reader(filename=sys.argv[2])
 
     print_header()
@@ -103,12 +116,15 @@ def main():
         return i.fields[1] == src
 
     for mrna in itertools.ifilter(lambda x: is_type(x, 'mRNA'), annotations):
-        feats = list(pybed_get_interval(annotations, mrna))
+        feats = fetch_intervals(an_tabix, mrna)
         exons0 = filter(has_target, filter(lambda x: is_type(x, 'exon'), feats))
 
         # pick only the exons mapping to the putative chromosome
         exons = filter(lambda x: exon_target(x).chrom == mrna.chrom, exons0)
 
+        # no exons means no chromosome information, we don't need such variants
+        if not exons:
+            continue
 
         # use features from mvz pipeline
         mvz = filter(lambda x: is_source(x, 'mvz-annot'), feats)
@@ -141,7 +157,10 @@ def main():
             # try to pick mvz CDS feature and extract the Name(s) from it
             mvz_cds = filter(lambda x: is_type(x, 'CDS'), mvzf)
             if mvz_cds:
-                mvz_name = ",".join(i.attrs['Name'] for i in mvz_cds if 'Name' in i.attrs)
+                try:
+                    mvz_name = ",".join(i.attrs['Name'] for i in mvz_cds if 'Name' in i.attrs)
+                except:
+                    print >> sys.stderr, "error at var:", var.CHROM, var.POS
             else:
                 mvz_name = "NA"
 
