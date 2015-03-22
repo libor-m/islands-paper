@@ -1,0 +1,53 @@
+#
+# calculate windowed Fst in target genome space
+#
+
+# load the data, filter out NA
+d = pd.read_csv("data/variant-table.tsv", sep="\t")
+
+f = pd.read_csv('data/lp2-var-filtered.weir.fst', sep="\t", na_values=['-nan', 'nan'])
+f.columns = ['chrom', 'pos', 'fst']
+
+# add fst values
+da = pd.merge(d, f, how='left')
+
+# first approach is to drop all values without position in zf and fst 
+#  improvement is to impute zf_pos
+daf = da.dropna(subset=['zf_pos', 'fst'])
+
+# for each variant identified by chrom, pos
+# calculate a window in the whole data
+
+def irows(d, cols):
+    """iterate over rows, yield tuple of scalar values
+    """
+    for idx, r in d[cols].iterrows():
+        yield tuple(x for x in r)
+
+# dev version
+ir = irows(daf, ['chrom', 'zf_pos'])
+pos = ir.next()
+window_half = 5e5
+filt_dist = (daf['zf_pos'] - pos[1]).abs() < window_half
+filt_chrom = daf['chrom'] == pos[0]
+value = daf['fst'][filt & filt_chrom].mean()
+
+def win_fst(d, chrom, pos, window_half=5e5):
+    """calculate windowed fst in target (zebra finch)
+    coordinates
+    """
+    filt_dist = (d['zf_pos'] - pos).abs() < window_half
+    filt_chrom = d['chrom'] == chrom
+    return d['fst'][filt_dist & filt_chrom].mean()
+
+# another test
+import itertools
+[win_fst(daf, chrom, pos) for chrom, pos in itertools.islice(ir, 10)]
+
+# and full run
+fst_1mb = [win_fst(daf, chrom, pos) for chrom, pos in irows(daf, ['chrom', 'zf_pos'])]
+# takes 3+ hours
+
+# looks like we have to go for equal sampling instead of sampling each var
+daf['fst_1mb'] = fst_1mb
+daf.
