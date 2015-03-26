@@ -50,4 +50,4 @@ fst_1mb = [win_fst(daf, chrom, pos) for chrom, pos in irows(daf, ['chrom', 'zf_p
 
 # looks like we have to go for equal sampling instead of sampling each var
 daf['fst_1mb'] = fst_1mb
-daf.
+# ...
