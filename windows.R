@@ -66,8 +66,16 @@ daf <- da %>% filter(!is.na(fst))
 save(daf, file='data/daf.RData')
 write.table(daf, file='data/daf.tsv', row.names=F, quote=F, sep="\t")
 
+load('data//daf.RData')
+
 # check if the fst outside the mapped exons differ
 ggplot(daf, aes(fst, fill=is.na(zf_pos))) + geom_density(alpha=0.6, colour=NA)
+# no difference
+
+# check check distribution of fst in badly mapped contigs
+ggplot(daf, aes(fst, fill=zf_max - zf_min < 5e5)) + geom_density(alpha=0.6, colour=NA)
+ggplot(daf, aes(zf_max - zf_min < 5e5, fst)) + geom_boxplot() + coord_flip()
+# maybe a bit lower fst values for the badly mapped exons
 
 # plot few chromosomes
 chroms <- c("chr1", "chrZ")
@@ -179,31 +187,140 @@ dfst_smooth %>% filter(chrom %in% bigchroms) %>%
 
 # attempts to speed things up (naive approach takes 180 s on single core)
 # - range query
-library(IRanges)
-ir <- IRanges(start=ifelse(is.na(daf$zf_pos), daf$zf_min, daf$zf_pos), 
-              end=ifelse(is.na(daf$zf_pos), daf$zf_max, daf$zf_pos + 1))
-rd <- RangedData(ir, space=daf$chrom, daf$fst )
 library(GenomicRanges)
 
-gr <- GRanges(seqnames=daf$chrom, ranges=ir, mcols=daf[,"fst"])
-gf <- GIntervalTree(gr)
+# this has to be done only once, subsequent queries
+# with bootstrapped fst can use the result
+find_variants <- function(vars, win_size=1e6, req_points=1e3) {
+  # ensure that the whole chrom is covered
+  stride <- as.integer(max(vars$zf_max) %>% { .  / max(. / win_size, req_points) })
 
-irq <- IRanges(start=dfpoints$zf_pos - win_size / 2, end=dfpoints$zf_pos + win_size / 2)
-gq <- GRanges(seqnames=dfpoints$chrom, ranges=irq)
+  # create equally spaced poins along all chromosomes, spaced by `stride`
+  dfpoints <- vars %>% 
+    filter(chrom != "chrUn") %>%         # take only the known chromosomes
+    mutate(chrom=as.character(chrom)) %>% # do not copy around the factor levels
+    group_by(chrom) %>%                   # calculate chromosome sizes
+    summarize(zf_size=max(zf_max)) %>%    # ..
+    filter(zf_size > win_size) %>%        # pick chromosomes bigger than requested window
+    split(seq_len(dim(.)[1])) %>%         # make data suitable for lapply
+    lapply(function(x) 
+      data.frame(chrom=x[[1]], zf_pos=seq(from=win_size/2, to=x[[2]], by=stride), stringsAsFactors=F)) %>%
+    rbind_all                         # bind the dataframes together
 
-ovr <- findOverlaps(gq, gf)
-ovr %>% as.data.frame %>% arrange(queryHits) %>% View
+  # place variants without direct mapping in zebra finch into wide range of all exons in given contig
+  ir <- IRanges(start=ifelse(is.na(vars$zf_pos), vars$zf_min, vars$zf_pos), 
+              end=ifelse(is.na(vars$zf_pos), vars$zf_max, vars$zf_pos + 1))
 
-# 
-t <- ovr %>% as.data.frame %>% 
-  mutate(chrom=as.factor(seqnames(gf)[subjectHits]), 
-         fst=mcols(gf)[subjectHits,], 
-         zf_pos=gq %>% ranges %>% start %>% {.[queryHits] + win_size / 2}  ) %>%
-  group_by(chrom, zf_pos) %>%
-  summarize(fst_smooth=mean(fst))
+  # create interval forest for faster querying
+  gr <- GRanges(seqnames=vars$chrom, ranges=ir)
+  gf <- GIntervalTree(gr)
 
-# this works, and is faster..
-# wrap to functions
+  # create whole set of query ranges
+  irq <- IRanges(start=dfpoints$zf_pos - win_size / 2, end=dfpoints$zf_pos + win_size / 2)
+  gq <- GRanges(seqnames=dfpoints$chrom, ranges=irq)
+
+  # query the intervalforest
+  # annotate the results with chromosome and midpoint of query window
+  rv <- findOverlaps(gq, gf) %>% 
+    as.data.frame %>%
+    mutate(chrom=as.factor(seqnames(gf)[subjectHits]), 
+           zf_pos=gq %>% ranges %>% start %>% {.[queryHits] + win_size / 2}  )
+  
+  rv
+}
+
+smoothed_values <- function(hits, values) {
+  hits %>%
+    mutate(fst=values[subjectHits]) %>%
+    group_by(chrom, zf_pos) %>%
+    summarize(fst_smooth=mean(fst))
+}
+
+bigchroms <- c("chr1", "chr1A", "chr2", "chr3", "chr4", "chrZ")
+fst_plot <- function(x, chroms) 
+  x %>% 
+  filter(chrom %in% chroms) %>%
+  ggplot(aes(zf_pos, fst_smooth)) +
+  geom_line() +
+  facet_wrap(~chrom, ncol=1)
+
+# fst randomized by sampling the same chromosome
+rand_fst <- function(d)
+  d %>% 
+  select(chrom, zf_pos, fst) %>%
+  group_by(chrom) %>%
+  mutate(fst=sample(fst)) %>%
+  .[,"fst"] %>%
+  .[[1]]
+
+ptm <- proc.time()
+ovr <- find_variants(daf)
+proc.time() - ptm
+# 11 seconds
+
+ovr %>% View
+
+ptm <- proc.time()
+t <- smoothed_values(ovr, daf$fst)
+proc.time() - ptm
+# 0.5 seconds
+
+ptm <- proc.time()
+t <- smoothed_values(ovr, rand_fst(daf))
+proc.time() - ptm
+# <1 second
+# that is 25k in few hours
+
+t %>% fst_plot(bigchroms)
+
+reps <- 1:25000
+lt <- sapply(reps, function(x) smoothed_values(ovr, rand_fst(daf))$fst_smooth)
+save(lt, file='data/bootstraps.RData')
+t$fst_boot <- apply(lt, 1, max)
+
+# recalculate real smooth values without badly mapped contigs
+daff <- daf %>% filter(zf_max - zf_min < 5e5)
+ovr <- find_variants(daff)
+t2 <- smoothed_values(ovr, daff$fst)
+
+tm <- left_join(t %>% select(-fst_smooth), t2 %>% select(chrom, zf_pos, fst_smooth))
+
+# almost final plot, showing max bootstrapped value
+# the real smoothed value and the detected 'islands'
+# t %>% 
+tm %>%
+  filter(chrom %in% bigchroms) %>%
+  ggplot(aes(zf_pos)) + 
+  geom_line(aes(y=fst_boot), colour="yellow") +
+  geom_line(aes(y=fst_smooth), colour="blue") + 
+  geom_point(aes(y=zf_pos), y=0.2, colour="blue", size=2, data=t %>% filter(fst_smooth > fst_boot, chrom %in% bigchroms)) +
+  facet_wrap(~chrom, ncol=1) +
+  ylim(c(-.1, .2))
+
+# filter out too wide contig targets
+daf %>%
+  mutate(zf_len=zf_max - zf_min) %>%
+  filter(zf_len < 5e4) %>%
+  ggplot(aes(zf_len)) + geom_histogram()
+
+
+# 1426 contigs are filtered out as 'too long' at 5e4
+# 1005 at 1e5
+# checking the zebra finch annotation, only 6 genes is longer than 500k (ensGenes)
+daf %>%
+  mutate(zf_len=zf_max - zf_min) %>%
+  filter(zf_len > 1e6) %>%
+  .[,"contig_name"] %>%
+  as.character %>% factor %>%
+  levels %>% length
+
+# this filters out 16k additional variants
+daf %>%
+  mutate(zf_len=zf_max - zf_min) %>%
+  filter(zf_len > 5e4) %>%
+  summarize(nvars=n())
+
+# run on metacentrum/snow 
 
 # - subset data - query only chromX data for chromX positions
 # - parallelize from the outside
