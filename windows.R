@@ -236,6 +236,15 @@ smoothed_values <- function(hits, values) {
     summarize(fst_smooth=mean(fst))
 }
 
+# choose top n bigest chroms
+bigchroms <- daf %>% 
+  filter(chrom != "chrUn") %>%
+  group_by(chrom) %>%
+  summarize(chrom_len=max(zf_max)) %>%
+  arrange(dplyr::desc(chrom_len)) %>%
+  head(n=10) %>%
+  .$chrom
+
 bigchroms <- c("chr1", "chr1A", "chr2", "chr3", "chr4", "chrZ")
 fst_plot <- function(x, chroms) 
   x %>% 
@@ -295,7 +304,8 @@ tm %>%
   geom_line(aes(y=fst_smooth), colour="blue") + 
   geom_point(aes(y=zf_pos), y=0.2, colour="blue", size=2, data=t %>% filter(fst_smooth > fst_boot, chrom %in% bigchroms)) +
   facet_wrap(~chrom, ncol=1) +
-  ylim(c(-.1, .2))
+  ylim(c(-.1, .2)) +
+  ggtitle("nightingale speciation islands as mapped to zebra finch chromosomes, 25k bootstrap")
 
 # filter out too wide contig targets
 daf %>%
@@ -320,7 +330,12 @@ daf %>%
   filter(zf_len > 5e4) %>%
   summarize(nvars=n())
 
-# run on metacentrum/snow 
+# TODO - final filtering:
+# - badly mapped contigs
+# - low quality variants
+# TODO - compare convolution with 1M box kernel with the fst_boot
+# i guess the bootstrap value is negatively correlated with the var density
+# TODO - fst according to mvz seqpart
 
 # - subset data - query only chromX data for chromX positions
 # - parallelize from the outside
