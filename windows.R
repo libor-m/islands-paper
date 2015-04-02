@@ -4,13 +4,15 @@
 #
 setwd("c:/work/slavici-clanek/")
 
-# load the data and fix chromosome order
+library(dplyr)
+library(ggplot2)
 library(gtools)
+
+# load the data and fix chromosome order
+
 d <- read.delim("data/variant-table.tsv") %>% 
   mutate(chrom=chrom %>% factor(levels=chrom %>% levels %>% mixedsort %>% rev)) 
 
-library(dplyr)
-library(ggplot2)
 
 # start with some checks 
 # does quality depend on read depth?
@@ -66,7 +68,7 @@ daf <- da %>% filter(!is.na(fst))
 save(daf, file='data/daf.RData')
 write.table(daf, file='data/daf.tsv', row.names=F, quote=F, sep="\t")
 
-load('data//daf.RData')
+load('data/daf.RData')
 
 # check if the fst outside the mapped exons differ
 ggplot(daf, aes(fst, fill=is.na(zf_pos))) + geom_density(alpha=0.6, colour=NA)
@@ -191,8 +193,9 @@ library(GenomicRanges)
 
 # this has to be done only once, subsequent queries
 # with bootstrapped fst can use the result
+# vars is a df with chrom, zf_pos, zf_max, zf_min
 find_variants <- function(vars, win_size=1e6, req_points=1e3) {
-  # ensure that the whole chrom is covered
+  # ensure that the whole biggest chrom is covered with windows
   stride <- as.integer(max(vars$zf_max) %>% { .  / max(. / win_size, req_points) })
 
   # create equally spaced poins along all chromosomes, spaced by `stride`
@@ -233,7 +236,7 @@ smoothed_values <- function(hits, values) {
   hits %>%
     mutate(fst=values[subjectHits]) %>%
     group_by(chrom, zf_pos) %>%
-    summarize(fst_smooth=mean(fst))
+    summarize(fst_smooth=mean(fst, na.rm=T))
 }
 
 # choose top n bigest chroms
@@ -286,6 +289,7 @@ reps <- 1:25000
 lt <- sapply(reps, function(x) smoothed_values(ovr, rand_fst(daf))$fst_smooth)
 save(lt, file='data/bootstraps.RData')
 t$fst_boot <- apply(lt, 1, max)
+write.table(t %>% select(-smooth), "data/tfst0.tsv", sep="\t", quote=F, row.names=F)
 
 # recalculate real smooth values without badly mapped contigs
 daff <- daf %>% filter(zf_max - zf_min < 5e5)

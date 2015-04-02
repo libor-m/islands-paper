@@ -38,10 +38,17 @@ import itertools
 
 import vcf
 
-def report(var, value, sep="\t"):
+def report(var, values=[], count=3, sep="\t"):
     """report calculated value in some reasonable format
+    report max `count` fields
+    fill all empty fields with blanks
     """
-    print sep.join([var.CHROM, var.POS, value])
+    
+    fields = [var.CHROM, var.POS]
+    fields.extend(values[:count])
+    blanks = [''] * (count - len(values))
+    fields.extend(blanks)
+    print sep.join(map(str, fields))
 
 def harvest_alleles(samples, pops):
     """harvest are alleles for each population into {pop : [alleles]}
@@ -60,7 +67,7 @@ def harvest_alleles(samples, pops):
 def calc_dxy(pop_alleles):
     """calculate dxy
     by the dumbest approach - count differences for all comparisons
-    return the fraction
+    hope it won't be slow/expensive
     """
     combs = itertools.product(*pop_alleles.values())
     
@@ -70,13 +77,13 @@ def calc_dxy(pop_alleles):
             diffs += 1
         total += 1
 
-    return float(diffs) / total
+    return (diffs, total)
 
 def main():
     if len(sys.argv) < 3:
         sys.exit("use: %s vcf popfile (popfile is sample<whitespace>pop)")
 
-    variants = vcf.Reader(sys.argv[1])
+    variants = vcf.Reader(filename=sys.argv[1])
 
     # read in the sample, population table
     # into a dictionary
@@ -86,21 +93,20 @@ def main():
     # for each variant
     for var in variants:
         # pick samples that have depth > 0
-        samples = [s for s in v.samples if s['DP'] > 0]
+        # ie do not use imputed genotypes for the calculation
+        samples = [s for s in var.samples if s['DP'] > 0]
 
         # take every haploid sequence as an independent sample (TODO: is this ok?)
         # assign all calls to the population
         pop_alleles = harvest_alleles(samples, pops)
 
-        # currently defined only for two populations
-        # TODO: any alternatives?
         if len(pop_alleles) != 2:
-            report(var, 'NA')
+            report(var)
             continue
 
         # get and report the dxy value
-        dxy = calc_dxy(pop_alleles)
-        report(var, str(dxy))
+        ndiff, ntotal = calc_dxy(pop_alleles)
+        report(var, [ndiff, ntotal, float(ndiff)/ntotal])
 
 if __name__ == '__main__':
     main()

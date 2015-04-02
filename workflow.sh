@@ -43,3 +43,6 @@ blat -fastMap -dots=10 $GENOME 81-song/song-modules.fa 81-song/probe-blat.psl
 # search again, consider -fine and -noHead
 blat -dots=10 $GENOME 81-song/song-modules.fa 81-song/probe-blat-full.psl
 # 634 matches looks better
+
+# dxy calculation
+python dxy.py data/lp2-var-filtered.vcf.gz populations > data/dxy.tsv
