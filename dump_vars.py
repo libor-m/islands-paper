@@ -1,7 +1,7 @@
 """using vcf file and a gff annotation dump the data 
 
 format that should be enough for most of the analyses in R
-- standard ccf columns: CHROM, POS, QUAL
+- standard vcf columns: CHROM, POS, QUAL
 - is indel flag (INDEL key in info)
 - raw read depth (DP), DP4
 - position in contig
@@ -9,8 +9,6 @@ format that should be enough for most of the analyses in R
 -- exact mapped with NAs for varints w/o mapping
 -- binned by min-max exon
 - contig name
-
-TODO: replace pybed_ functions with some faster variants
 """
 
 import sys
