@@ -2,7 +2,7 @@
 # look at dxy compared to Fst
 #
 
-setwd("c:/work/slavici-clanek/")
+setwd("c:/work/lab/slavici-clanek/")
 
 # granges must be loaded first beacuse it masks dplyr functions otherwise
 # with some useless variants
@@ -13,6 +13,8 @@ library(ggplot2)
 library(gtools)
 
 sortchrom <- function(df) df %>% mutate(chrom=chrom %>% factor(levels=chrom %>% levels %>% mixedsort %>% rev))
+
+#### load data ####
 
 # load the data and fix chromosome order
 d <- read.delim("data/variant-table.tsv") %>% sortchrom
@@ -33,6 +35,8 @@ bigchroms <- da %>%
   head(n=10) %>%
   .$chrom
 
+#### sanity checks, overview ####
+
 # plot the variance ~ ncomparisons
 dxy %>% ggplot(aes(ncomp, dxy)) + geom_point(alpha=0.1)
 dxy %>% ggplot(aes(ncomp)) + geom_histogram()
@@ -45,35 +49,31 @@ da %>%
     geom_point(colour="#cccccc") + 
     facet_wrap(~chrom, ncol=1)
 
+#### sliding window for Dxy ####
+
 # use windows.R::find_variants to assign variants to sliding windows
 daf_dxy <- da %>% filter(ncomp > 30)
 ovr_dxy <- daf_dxy %>% find_variants
 
-# calculate smoothed dxy
-# improved since windows.R
-smoothed_values <- function(hits, values) {
-  hits %>%
-    mutate(fst=values[subjectHits]) %>%
-    group_by(chrom, zf_pos) %>%
-    summarize(smooth=mean(fst, na.rm=T), nvars=n())
-}
+# evaluate the smoothed win
+tdxy <- smoothed_values(ovr_dxy, daf_dxy$dxy) %>% rename(dxy_smooth=smooth)
 
-tdxy <- smoothed_values(ovr_dxy, daf_dxy$dxy) %>% dplyr::rename(dxy_smooth=smooth)
+# test plot
 tdxy %>% 
   filter(chrom %in% bigchroms) %>%
   ggplot(aes(zf_pos, dxy_smooth)) + 
     geom_line(colour="green") +
     facet_wrap(~chrom, ncol=1)
   
-# get fst smoothers
+#### sliding window for Fst ####
 dfst <- read.delim('data/lp2-var-filtered.weir.fst', col.names=c("chrom", "pos", "fst"))
 
 daf_fst <- d %>% left_join(dfst) %>% filter(qual > 10)
 ovr_fst <- daf_fst %>% find_variants
-tfst <- smoothed_values(ovr_fst, daf_fst$fst) %>% dplyr::rename(fst_smooth=smooth)
+tfst <- smoothed_values(ovr_fst, daf_fst$fst) %>% rename(fst_smooth=smooth)
 
 # plot smooth fst and dxy
-# looks i'm loosing the resolutino of fst by filtering the vars, go the other way around..
+# looks i'm loosing the resolution of fst by filtering the vars, go the other way around..
 tdxy %>%
   filter(chrom %in% bigchroms) %>%
   ggplot(aes(zf_pos)) + 
@@ -81,15 +81,7 @@ tdxy %>%
   geom_line(aes(y=fst_smooth), data=tfst %>% filter(chrom %in% bigchroms), colour="blue") +
   facet_wrap(~chrom, ncol=1)
 
-tdxy_scaled %>% 
-  filter(chrom %in% bigchroms) %>%
-  ggplot(aes(zf_pos, dxy_smooth)) + 
-  geom_line(colour="green") +
-  ylim(c(0, .0007)) +
-  facet_wrap(~chrom, ncol=1) +
-  ggtitle("per site dxy scaled by containing contig length")
-
-ggsave('results/dxy_scaled.pdf', width=20, height=16)
+#### scale Dxy by variant density ####
 
 # weight dxy values by size of contig thei're in
 # -> few big spikes probably due to missing data, let's check it
@@ -106,7 +98,17 @@ tdxy_scaled %>%
 
 ggsave('results/metrics_var_density.pdf', width=20, height=16)
 
-# try to do rescaled plots
+tdxy_scaled %>% 
+  filter(chrom %in% bigchroms) %>%
+  ggplot(aes(zf_pos, dxy_smooth)) + 
+  geom_line(colour="green") +
+  ylim(c(0, .0007)) +
+  facet_wrap(~chrom, ncol=1) +
+  ggtitle("per site dxy scaled by containing contig length")
+
+ggsave('results/dxy_scaled.pdf', width=20, height=16)
+
+#### rescale each variable to 0-1 scale, plot together (multitrack view) ####
 
 # rescale numeric vector into (0, 1) interval
 # clip everything outside the range 
@@ -144,21 +146,64 @@ ggsave('results/metrics_var_density-scaled.pdf', width=20, height=16)
 
 # check if the fst data is ok, find good ranges in histograms
 # 
-ggplot(tboot, aes(fst_boot)) + geom_histogram()
+# fix the non-matching windows in the tboot and tfst .. ;(
+# no time to calculate the bootstraps again
+read.delim("data/tfst0.tsv") %>%
+  select(-nvars) %>%
+  inner_join(tfst) %>%
+  rename(smooth=fst_smooth, boot=fst_boot) ->
+  tfst_boot
+
+read.delim("data/tdxy.tsv") %>%
+  rename(smooth=dxy_smooth, boot=dxy_boot) ->
+  tdxy_boot
+
+# long formats for plotting
+# (keep the wide ones for thresholding..)
 library(tidyr)
-tt <- gather(tboot, type, fst, smooth, fst_boot)
-tt %>%
+tfst_boot %>%
+  gather(type, fst, smooth, boot) ->
+  tfst_boot_long
+
+tdxy_boot %>%
+  gather(type, dxy, smooth, boot) ->
+  tdxy_boot_long
+
+# histogram of fst and bootstraps
+tfst_boot_long %>%
+  ggplot(aes(fst, fill=type)) + 
+  geom_histogram(alpha=0.6, position="identity")
+
+# histogram of Dxy
+tdxy_boot_long %>%
+  ggplot(aes(dxy, fill=type)) + 
+  geom_histogram(alpha=0.6, position="identity")
+
+# one long table for all plotting - is this better?
+t_long <- bind_rows(
+  tfst_boot %>% gather(type, value, smooth, boot) %>% mutate(measure="Fst"),
+  tdxy_boot %>% gather(type, value, smooth, boot) %>% mutate(measure="Dxy")
+  )
+
+# plot histograms for Fst and Dxy
+t_long %>%
+  ggplot(aes(value, fill=type)) +
+  geom_histogram(position="identity", alpha=0.7) +
+  facet_wrap(~measure)
+
+# check nvars between measures
+t_long %>%
+  ggplot(aes(nvars, fill=measure)) +
+  geom_histogram(position="identity", alpha=0.7)
+
+
+tfst_boot_long %>%
   filter(chrom %in% bigchroms) %>%
   ggplot(aes(zf_pos, fst, colour=type)) + 
   geom_line() + 
-  geom_point(y=0.2, colour="blue", shape=15, size=2, data=tboot %>% filter(smooth > fst_boot, chrom %in% bigchroms)) +
+  geom_point(y=0.2, colour="blue", shape=15, size=2, data=tfst_boot %>% filter(smooth > boot, chrom %in% bigchroms)) +
   facet_wrap(~chrom, ncol=1)
 
-ggplot(tt, aes(fst, fill=type)) + geom_histogram()
-
-tdxy_scaled %>% 
-  filter(chrom %in% bigchroms) %>% 
-  ggplot(aes(nvars)) + geom_histogram()
 
 # add bootstrap for fst
 tdxy_scaled %>% 
@@ -178,11 +223,12 @@ tdxy_scaled %>%
 ggsave('results/metrics_var_density-scaled.pdf', width=20, height=16)
 
 # check if shifted tracks is more legible
-# add means per valua and chromosome
+# add means per value and chromosome
 tdxy_scaled %>% 
   filter(chrom %in% bigchroms) %>%
   ggplot(aes(zf_pos)) + 
   geom_line(aes(y=rescale(dxy_smooth, lims=c(0, .0007)) + 1, colour="Dxy")) +
+  geom_line(aes(y=rescale(dxy_boot, lims=c(0, .0007)) + 1, colour="Dxy_boot")) +
   geom_line(aes(y=rescale(smooth, lims=c(0, .25)), colour="Fst"), data=tboot %>% filter(chrom %in% bigchroms)) +  
   geom_line(aes(y=rescale(fst_boot, lims=c(0, .25)), colour="Fst_boot"), data=tboot %>% filter(chrom %in% bigchroms)) +  
   geom_line(aes(y=rescale(nvars, lims=c(0, 700)) + 2, colour="nvars")) +
@@ -211,3 +257,42 @@ tdxy_scaled %>%
 # questions
 # - how to deal with uneven sample coverage in contigs and across contigs
 # - 
+
+
+# calculate bootstrap for dxy
+sample_dxy <- function(d)
+  d %>% 
+  select(chrom, zf_pos, dxy) %>%
+  group_by(chrom) %>%
+  mutate(dxy=sample(dxy)) %>%
+  .[,"dxy"] %>%
+  .[[1]]
+
+reps <- 1:25000
+lt <- sapply(reps, function(x) smoothed_values(ovr_dxy, sample_dxy(daf_dxy))$smooth)
+save(lt, file='data/bootstraps-dxy.RData')
+tdxy$dxy_boot <- apply(lt, 1, max)
+tdxy_scaled$dxy_boot <- tdxy$dxy_boot
+write.table(tdxy, "data/tdxy.tsv", sep="\t", quote=F, row.names=F)
+rm(lt)
+gc()
+
+
+# and again, with dxy bootstrap
+tdxy_scaled %>% 
+  filter(chrom %in% bigchroms) %>%
+  ggplot(aes(zf_pos)) + 
+  geom_line(aes(y=rescale(dxy_smooth, lims=c(0, .0007)) + 1, colour="Dxy")) +
+  geom_line(aes(y=rescale(smooth, lims=c(0, .25)), colour="Fst"), data=tboot %>% filter(chrom %in% bigchroms)) +  
+  geom_line(aes(y=rescale(fst_boot, lims=c(0, .25)), colour="Fst_boot"), data=tboot %>% filter(chrom %in% bigchroms)) +  
+  geom_line(aes(y=rescale(nvars, lims=c(0, 700)) + 2, colour="nvars")) +
+  geom_point(y=0, colour="blue", shape=15, size=2, data=tboot %>% filter(smooth > fst_boot, chrom %in% bigchroms)) +
+  facet_wrap(~chrom, ncol=1) +
+  geom_hline(aes(yintercept=rescale(cmean, lims=c(0, .0007)) + 1, colour="Dxy"), data=tdxy_scaled %>% filter(chrom %in% bigchroms) %>% group_by(chrom) %>% summarize(cmean=mean(dxy_smooth))) +
+  geom_hline(aes(yintercept=rescale(cmean, lims=c(0, .25)), colour="Fst"), data=tboot %>% filter(chrom %in% bigchroms) %>% group_by(chrom) %>% summarize(cmean=mean(smooth))) +
+  geom_hline(aes(yintercept=rescale(cmean, lims=c(0, 700)) + 2, colour="nvars"), data=tdxy_scaled %>% filter(chrom %in% bigchroms) %>% group_by(chrom) %>% summarize(cmean=median(nvars))) +
+  ggtitle("response fst and dxy to variant site density, rescaled to 1") +
+  ylab("rescaled values") +
+  xlab("zebra finch chromosome position") +
+  scale_colour_brewer(type="qual", palette="Set1") +
+  theme(legend.title=element_blank())
