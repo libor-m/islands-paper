@@ -1,3 +1,4 @@
+
 # 
 # look at dxy compared to Fst
 #
@@ -8,6 +9,7 @@ setwd("c:/work/lab/slavici-clanek/")
 # with some useless variants
 library(GenomicRanges)
 
+library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(gtools)
@@ -17,73 +19,108 @@ sortchrom <- function(df) df %>% mutate(chrom=chrom %>% factor(levels=chrom %>% 
 #### load data ####
 
 # load the data and fix chromosome order
-d <- read.delim("data/variant-table.tsv") %>% sortchrom
+dvar <- read.delim("data/variant-table.tsv")
    
 # load the dxy data
-dxy <- read.delim('data/dxy.tsv', col.names=c("chrom", "pos", "ndiff", "ncomp", "dxy")) %>%
-  filter(!is.na(ndiff))
+read.delim('data/dxy.tsv', 
+           col.names=c("chrom", "pos", "ndiff", "ncomp", "dxy")) %>%
+  filter(!is.na(ndiff)) ->
+  ddxy
 
-# join on chrom, pos
-da <- d %>% inner_join(dxy)
+# join on chrom, pos 
+# filter on some minimal variant quality
+# and number of comparisons when calculating dxy
+# (reflect number of sampled individuals for given site)
+dvar %>%
+  filter(zf_max - zf_min < 5e5) %>%
+  filter(qual > 10) %>%
+  inner_join(ddxy) %>%
+  filter(ncomp > 30) ->
+  daf_dxy
 
-# pick 10 biggest chroms
-bigchroms <- da %>% 
-  filter(chrom != "chrUn") %>%
-  group_by(chrom) %>%
-  summarize(chrom_len=max(pos)) %>%
-  arrange(dplyr::desc(chrom_len)) %>%
-  head(n=10) %>%
-  .$chrom
-
-#### sanity checks, overview ####
+#### QC of Dxy data ####
 
 # plot the variance ~ ncomparisons
-dxy %>% ggplot(aes(ncomp, dxy)) + geom_point(alpha=0.1)
-dxy %>% ggplot(aes(ncomp)) + geom_histogram()
+ddxy %>% ggplot(aes(ncomp, dxy)) + geom_point(alpha=0.1)
+ddxy %>% ggplot(aes(ncomp)) + geom_histogram()
 
 # dot plot along chromosomes
 # pick only reasonable values of ncomp based on previous plot
-da %>% 
-  filter(chrom %in% bigchroms, ncomp > 50) %>%
+daf %>% 
+  filter(chrom %in% bigchroms) %>%
   ggplot(aes(pos, dxy)) + 
     geom_point(colour="#cccccc") + 
     facet_wrap(~chrom, ncol=1)
 
 #### sliding window for Dxy ####
 
-# use windows.R::find_variants to assign variants to sliding windows
-daf_dxy <- da %>% filter(ncomp > 30)
+source('gr-bootstrap.R')
+
 ovr_dxy <- daf_dxy %>% find_variants
 
 # evaluate the smoothed win
-tdxy <- smoothed_values(ovr_dxy, daf_dxy$dxy) %>% rename(dxy_smooth=smooth)
+tdxy <- smoothed_values(ovr_dxy, daf$dxy)
 
 # test plot
 tdxy %>% 
   filter(chrom %in% bigchroms) %>%
-  ggplot(aes(zf_pos, dxy_smooth)) + 
+  ggplot(aes(zf_pos, smooth)) + 
     geom_line(colour="green") +
     facet_wrap(~chrom, ncol=1)
-  
-#### sliding window for Fst ####
-dfst <- read.delim('data/lp2-var-filtered.weir.fst', col.names=c("chrom", "pos", "fst"))
 
-daf_fst <- d %>% left_join(dfst) %>% filter(qual > 10)
-ovr_fst <- daf_fst %>% find_variants
-tfst <- smoothed_values(ovr_fst, daf_fst$fst) %>% rename(fst_smooth=smooth)
+# calculate the bootstrap
+# calculate ~100 replicates and check the outcome
+# before doing 25k
+reps <- 1:100
+lt <- sapply(reps, function(x) smoothed_values(ovr_dxy, rand_var(daf_dxy, "dxy"))$smooth)
+
+smoothed_values(ovr_dxy, daf_dxy$dxy) %>% 
+  mutate(boot = apply(lt, 1, max), measure="Dxy") ->
+  tdxy_boot
+
+tdxy_boot %>% 
+  select(boot, smooth) %>% 
+  gather(type, value) %>% 
+  ggplot(aes(value, fill=type)) +
+  geom_density(colour=NA, alpha=0.7)
+
+# the full calculation
+reps <- 1:25000
+lt <- sapply(reps, function(x) smoothed_values(ovr_dxy, rand_var(daf_dxy, "dxy"))$smooth)
+lt %>% save(file='data/bootstraps-dxy.RData')
+
+# add bootstrap and measure tag to the real smoothed values
+smoothed_values(ovr_dxy, daf_dxy$dxy) %>% 
+  mutate(boot = apply(lt, 1, max), measure="Dxy") ->
+  tdxy_boot
+
+tdxy_boot %>% write.table("data/tdxy_boot.tsv", sep="\t", quote=F, row.names=F)
+
+# clean up the huge table 
+# not very useful in the end..
+# https://bugs.r-project.org/bugzilla3/show_bug.cgi?id=14611
+rm(lt)
+gc()
+
+#### sliding window for Fst ####
+
+# load smooth and bootstrap produced in fst-windows.R
+tfst_boot <- read.delim("data/tfst_boot.tsv")
 
 # plot smooth fst and dxy
 # looks i'm loosing the resolution of fst by filtering the vars, go the other way around..
 tdxy %>%
   filter(chrom %in% bigchroms) %>%
-  ggplot(aes(zf_pos)) + 
-  geom_line(aes(y=dxy_smooth), colour="green") +
-  geom_line(aes(y=fst_smooth), data=tfst %>% filter(chrom %in% bigchroms), colour="blue") +
+  ggplot(aes(zf_pos, smooth)) + 
+  geom_line(colour="green") +
+  geom_line(data=tfst %>% filter(chrom %in% bigchroms), colour="blue") +
   facet_wrap(~chrom, ncol=1)
 
 #### scale Dxy by variant density ####
 
-# weight dxy values by size of contig thei're in
+#FIXME: does the scaling make sense? shouldn't be bootstrap enough?
+
+# weight dxy values by size of contig they're in
 # -> few big spikes probably due to missing data, let's check it
 tdxy_scaled <- smoothed_values(ovr_dxy, daf_dxy$dxy / daf_dxy$contig_size) %>% dplyr::rename(dxy_smooth=smooth)
 tdxy_scaled %>% 
@@ -108,10 +145,10 @@ tdxy_scaled %>%
 
 ggsave('results/dxy_scaled.pdf', width=20, height=16)
 
-#### rescale each variable to 0-1 scale, plot together (multitrack view) ####
+#### plot numbers together (multitrack view) ####
 
 # rescale numeric vector into (0, 1) interval
-# clip everything outside the range 
+# clip everything outside the range
 rescale <- function(vec, lims=range(vec), clip=c(0, 1)) {
   # find the coeficients of transforming linear equation
   # that maps the lims range to (0, 1)
@@ -146,21 +183,9 @@ ggsave('results/metrics_var_density-scaled.pdf', width=20, height=16)
 
 # check if the fst data is ok, find good ranges in histograms
 # 
-# fix the non-matching windows in the tboot and tfst .. ;(
-# no time to calculate the bootstraps again
-read.delim("data/tfst0.tsv") %>%
-  select(-nvars) %>%
-  inner_join(tfst) %>%
-  rename(smooth=fst_smooth, boot=fst_boot) ->
-  tfst_boot
-
-read.delim("data/tdxy.tsv") %>%
-  rename(smooth=dxy_smooth, boot=dxy_boot) ->
-  tdxy_boot
 
 # long formats for plotting
 # (keep the wide ones for thresholding..)
-library(tidyr)
 tfst_boot %>%
   gather(type, fst, smooth, boot) ->
   tfst_boot_long
@@ -185,6 +210,12 @@ t_long <- bind_rows(
   tdxy_boot %>% gather(type, value, smooth, boot) %>% mutate(measure="Dxy")
   )
 
+# version for tagged data sources
+t_long <- bind_rows(
+  tfst_boot %>% gather(type, value, smooth, boot),
+  tdxy_boot %>% gather(type, value, smooth, boot)
+)
+
 # plot histograms for Fst and Dxy
 t_long %>%
   ggplot(aes(value, fill=type)) +
@@ -196,14 +227,38 @@ t_long %>%
   ggplot(aes(nvars, fill=measure)) +
   geom_histogram(position="identity", alpha=0.7)
 
+# find quantiles
+t_long %>% 
+  group_by(paste(measure, type)) %>% 
+  summarise(q01=quantile(value, 0.001), q99=quantile(value, 0.999))
 
-tfst_boot_long %>%
+# the multitrack plot with measures, bootstraps
+# and 'islands'
+# use 5 class diverging BrBG brewer palette
+t_long %>%
   filter(chrom %in% bigchroms) %>%
-  ggplot(aes(zf_pos, fst, colour=type)) + 
-  geom_line() + 
-  geom_point(y=0.2, colour="blue", shape=15, size=2, data=tfst_boot %>% filter(smooth > boot, chrom %in% bigchroms)) +
-  facet_wrap(~chrom, ncol=1)
+  mutate(lineid=paste(measure, type),
+         lineshift=measure %>% as.factor %>% as.numeric) %>%
+  group_by(measure) %>%
+  mutate(value=rescale(value, c(quantile(value, 0.001), quantile(value, 0.999)))) %>%
+  ggplot(aes(zf_pos, value + lineshift, colour=lineid)) + 
+  geom_line(aes(group=lineid)) + 
+  geom_point(aes(colour="Fst smooth"), y=1,   shape=15, size=2, data=tfst_boot %>% filter(smooth > boot, chrom %in% bigchroms)) +
+  geom_point(aes(colour="Dxy smooth"), y=0.8, shape=15, size=2, data=tdxy_boot %>% filter(smooth > boot, chrom %in% bigchroms)) +
+  facet_wrap(~chrom, ncol=1) +
+  ylim(c(0.7, 3)) +
+  scale_colour_manual(values=c(
+    "Fst smooth"="#a6611a",
+    "Fst"="#a6611a",
+    "Fst boot"="#dfc27d",
+    "Dxy smooth"="#018571",
+    "Dxy"="#018571",
+    "Dxy boot"="#80cdc1"
+    ))
 
+ggsave('results/multitrack.pdf', width=20, height=16)
+
+#### spare parts (plotting) ####
 
 # add bootstrap for fst
 tdxy_scaled %>% 
@@ -251,31 +306,6 @@ tdxy_scaled %>%
   group_by(chrom) %>% 
   summarize(cmean=mean(dxy_smooth) %>% rescale(c(0, .0007))) %>%
   ggplot(aes(chrom, cmean)) + geom_point() + geom_hline(aes(yintercept=0.3))
-
-# TODO: center tracks around the mean?
-
-# questions
-# - how to deal with uneven sample coverage in contigs and across contigs
-# - 
-
-
-# calculate bootstrap for dxy
-sample_dxy <- function(d)
-  d %>% 
-  select(chrom, zf_pos, dxy) %>%
-  group_by(chrom) %>%
-  mutate(dxy=sample(dxy)) %>%
-  .[,"dxy"] %>%
-  .[[1]]
-
-reps <- 1:25000
-lt <- sapply(reps, function(x) smoothed_values(ovr_dxy, sample_dxy(daf_dxy))$smooth)
-save(lt, file='data/bootstraps-dxy.RData')
-tdxy$dxy_boot <- apply(lt, 1, max)
-tdxy_scaled$dxy_boot <- tdxy$dxy_boot
-write.table(tdxy, "data/tdxy.tsv", sep="\t", quote=F, row.names=F)
-rm(lt)
-gc()
 
 
 # and again, with dxy bootstrap

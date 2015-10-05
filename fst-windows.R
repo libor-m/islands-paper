@@ -12,7 +12,7 @@ library(gtools)
 
 # change chrom column in df to a factor with levels
 # correctly sorted for plotting with ggplot
-sortchrom <- function(df) df %>% mutate(chrom=chrom %>% factor(levels=chrom %>% levels %>% mixedsort %>% rev))
+sortchrom <- function(df) df %>% ungroup %>%mutate(chrom=chrom %>% factor(levels=chrom %>% levels %>% mixedsort %>% rev))
 
 dvar <- read.delim("data/variant-table.tsv")
 dfst <- read.delim('data/lp2-var-filtered.weir.fst', col.names=c("chrom", "pos", "fst"))
@@ -28,16 +28,18 @@ dvar %>%
   filter(qual > 10) ->
   daf
 
+# add more specific name for interop with dxy
+daf_fst <- daf
+
 # save filtered data
-save(daf, file='data/daf.RData')
-write.table(daf, file='data/daf.tsv', row.names=F, quote=F, sep="\t")
+save(daf_fst, file='data/daf_fst.RData')
+write.table(daf, file='data/daf-fst.tsv', row.names=F, quote=F, sep="\t")
 
 # load when resuming session
-load('data/daf.RData')
+load('data/daf_fst.RData')
 
 #### QC of variant data ####
 
-# start with some checks 
 # does quality depend on read depth?
 dvar %>% 
   filter(qual < 999) %>%
@@ -85,6 +87,21 @@ dvar %>%
   filter(zf_len < 5e4) %>%
   ggplot(aes(zf_len)) + 
   geom_histogram()
+
+# check whether 'chromosomes' are covered with variants
+dfai <- read.delim("data/lp2.fasta.fai", 
+                   header=F,
+                   col.names=c("chrom", "len", "start", "x", "y"))
+
+# get shared levels for final order
+chrom_levs <- unique(c(levels(dvar$chrom), levels(dfai$chrom))) %>% mixedsort %>% rev
+data.frame() %>%
+  ggplot(aes(chrom)) +
+  geom_bar(aes(y=len), stat="identity", data=dfai) +
+  geom_point(aes(y=pos), colour="red", data=dvar) +
+  coord_flip() +
+  scale_x_discrete(limits=chrom_levs) 
+ggsave(file="results/var-coverage.png", width=200, height=290, units="mm")
 
 #### QC of Fst values ####
 
@@ -189,7 +206,7 @@ smoothed_values(ovr, daf$fst) %>%
   mutate(boot = apply(lt, 1, max), measure="Fst") ->
   tfst_boot
 
-tfst_boot %>% write.table("data/tfst.tsv", sep="\t", quote=F, row.names=F)
+tfst_boot %>% write.table("data/tfst_boot.tsv", sep="\t", quote=F, row.names=F)
 
 # clean up the huge table
 rm(lt)
@@ -197,25 +214,15 @@ gc()
 
 # a plot showing max bootstrapped value,
 # the real smoothed value and the detected 'islands'
-tm %>%
+tfst_boot %>%
   filter(chrom %in% bigchroms) %>%
   ggplot(aes(zf_pos)) + 
-  geom_line(aes(y=fst_boot), colour="yellow") +
-  geom_line(aes(y=fst_smooth), colour="blue") + 
-  geom_point(aes(y=zf_pos), y=0.2, colour="blue", size=2, data=t %>% filter(fst_smooth > fst_boot, chrom %in% bigchroms)) +
+  geom_line(aes(y=boot), colour="yellow") +
+  geom_line(aes(y=smooth), colour="blue") + 
+  geom_point(aes(y=zf_pos), y=0.2, colour="blue", size=2, data=tfst_boot %>% filter(smooth > boot, chrom %in% bigchroms)) +
   facet_wrap(~chrom, ncol=1) +
   ylim(c(-.1, .2)) +
   ggtitle("nightingale speciation islands as mapped to zebra finch chromosomes, 25k bootstrap")
-
-
-# TODO - final filtering:
-# - badly mapped contigs
-# - low quality variants
-
-# TODO - fst according to mvz seqpart
-
-# - subset data - query only chromX data for chromX positions
-# - parallelize from the outside
 
 #### spare parts ####
 

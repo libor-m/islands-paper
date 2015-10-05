@@ -3,7 +3,6 @@
 # (chromosome "chr", position "zf_pos", value in argument controllable column
 #
 
-
 #
 # the idea is to find all variants for each (overlapping)
 # window once, store the index to the variant table
@@ -13,9 +12,7 @@
 #
 # the real data is obtained with the same smoothing, without shuffling
 #
-
-# attempts to speed things up (naive approach takes 180 s on single core)
-# - range query
+# this shadows half of R base functions (wtf..)
 library(GenomicRanges)
 
 # this has to be done only once, subsequent queries
@@ -79,10 +76,11 @@ rand_fst <- function(d)
 # random permutation in the same chromosome
 # mutate instead of sample alone to permute inside chromosomes
 # .dots is a bit excersising of NSE, the resulting name could be fixed..
-rand_var <- function(d, var="fst")
+rand_var <- function(d, var="fst") {
   d %>% 
-  select(chrom, zf_pos, fst) %>%
+  select_("chrom", "zf_pos", var) %>%
   group_by(chrom) %>%
-  mutate_(.dots=setNames(~sample(var), var)) %>%
-  .[,var] %>%
+  mutate_(rand=paste0("sample(", var, ")")) %>%
+  .[,"rand"] %>%
   .[[1]]
+}
