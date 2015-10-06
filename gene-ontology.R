@@ -1,41 +1,229 @@
+#
 # analyze gene ontology in detected islands
-# input: tm data frame comes from windows.R and has fst_smooth and fst_boot for 
-# required data windows
+#
+
+library(GenomicRanges)
+
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(gtools)
+
+#### load data ####
+setwd("c:/work/lab/slavici-clanek/")
+
+tfst_boot <- read.delim("data/tfst_boot.tsv")
+tdxy_boot <- read.delim("data/tdxy_boot.tsv")
+
+t_boot <- bind_rows(tfst_boot, tdxy_boot)
+
+#### define islands ####
+
+#
+# island is defined as an 1M window around any variant, that 
+# exceeds the bootstrap threshold (the window size is the same used to 
+# calculate the smooth value)
+#
+
+# convert GenomicRanges object to data frame
+gr_to_bed3 <- function(gr) {
+  data.frame(chrom=gr %>% seqnames, start=gr %>% start, end=gr %>% end)
+}
+
+# data frame (with zf coords) to GRanges
+points_to_gr <- function(d, win_size) {
+  d %>% 
+    mutate(zf_start=max(zf_pos - win_size / 2, 0), zf_end=zf_pos + win_size / 2) %>%
+    select(chrom, zf_start, zf_end) ->
+    islands
+  
+  islands %>% 
+    {IRanges(start=.$zf_start, end=.$zf_end)} ->
+    ir
+
+  GRanges(seqnames=islands$chrom, ranges=ir)
+}
+
+# convert selected points along chromosomes
+# into windows, resolve the overlaps
+points_to_wins <- function(d, win_size=1e6) {
+
+  d %>%
+    points_to_gr(win_size) %>%
+    reduce ->
+    grr
+
+  gr_to_bed3(grr)
+}
+
+# convert data frame to GRanes object
+win_to_gr <- function(d) {
+  GRanges(seqnames=d$chrom, ranges=IRanges(start=d$start, end=d$end))
+}
+
+
+t_boot %>%
+  filter(smooth > boot,
+         measure == "Fst") %>%
+  points_to_wins(2e6) ->
+  d_wins_fst
+
+t_boot %>%
+  filter(smooth > boot,
+         measure == "Dxy") %>%
+  points_to_wins(2e6) ->
+  d_wins_dxy
+
+# the most interesting should be areas on the intersection of islands
+d_wins_int <- BiocGenerics::intersect(win_to_gr(d_wins_dxy), win_to_gr(d_wins_fst)) %>% gr_to_bed3
+
+# check it the intersection is ok
+bind_rows(d_wins_dxy %>% mutate(measure="Dxy"),
+          d_wins_fst %>% mutate(measure="Fst"),
+          d_wins_int %>% mutate(measure="both")) %>%
+  mutate(id=row_number()) ->
+  d_wins
+
+d_wins %>% 
+  filter(chrom %in% bigchroms) %>%
+  gather(type, pos, start, end) %>%
+  ggplot(aes(pos, colour=measure)) +
+  geom_line(aes(y=measure, group=id), size=3) +
+  facet_wrap(~chrom, ncol = 1)
+ggsave("results/window-overlaps.pdf", width=297, height=210, units="mm")
+
+# the 2M window works a bit better for the intersection
 
 # will rather use external tool for the intersection with all zf annotations
 # get the reduced bed3 list 
+d_wins_fst %>% write.table(file='data/islands-fst.bed', row.names=F, col.names=F, sep="\t", quote=F, eol="\n")
+d_wins_dxy %>% write.table(file='data/islands-dxy.bed', row.names=F, col.names=F, sep="\t", quote=F, eol="\n")
+d_wins_int %>% write.table(file='data/islands-int.bed', row.names=F, col.names=F, sep="\t", quote=F, eol="\n")
 
-win_size <- 1e6
-islands <- tm %>% 
-  filter(fst_smooth > fst_boot) %>% 
-  mutate(zf_start=zf_pos - win_size / 2, zf_end=zf_pos + win_size / 2)
+#### connect to biomart ####
 
-ir <- islands %>% {IRanges(start=.$zf_start, end=.$zf_end)}
-gr <- GRanges(seqnames=islands$chrom, ranges=ir)
-grr <- reduce(gr)
-
-dfgr <- data.frame(chr=grr %>% seqnames, start=grr %>% start, end=grr %>% end)
-write.table(dfgr, file='data/islands.bed', row.names=F, col.names=F, sep="\t", quote=F, eol="\n")
-
-# after filtering with bedtools..
-library(rtracklayer)
-igenes <- import.bed('data/genes-in-islands.bed')
-
-# mygene database looks incomplete for zfinch
-library(mygene)
-res <- queryMany()
-
+# connect to ensembl's biomart
 library(biomaRt)
 mart <- useMart("ensembl")
-d <- listDatasets(mart)
-d[grep("Tae", d$description),]
+
+# check what they have
+dmart <- listDatasets(mart)
+dmart %>% filter(grepl("Tae", description))
+
+# connect to zebra finch
 mart <- useMart("ensembl", "tguttata_gene_ensembl")
+# check the filter names
 listFilters(mart) %>% View
-listAttributes(mart) %>% filter(grepl("go", name, ignore.case=T))
-               
+
+# check attribute names
+listAttributes(mart) %>% filter(grepl("go", name, ignore.case=T)) %>% View
+listAttributes(mart) %>% filter(grepl("gal", name, ignore.case=T)) %>% View
+listAttributes(mart) %>% filter(grepl("name", name, ignore.case=T)) %>% View
+
 # test mart
-getBM(c("ensembl_gene_id", "ensembl_transcript_id", "go_id", "go_linkage_type", "name_1006"), 
-      c("ensembl_transcript_id"), c("ENSTGUT00000002388"), mart)
+getBM(attributes = c("ensembl_gene_id", "ensembl_transcript_id", "go_id", "go_linkage_type", "name_1006"), 
+      filters = c("ensembl_transcript_id"),
+      values = c("ENSTGUT00000002388"),
+      mart = mart)
+
+#### GO of genes in islands ####
+
+# GO enrichment tools, each has it's own set of problems..
+#
+# choose more here:
+# https://www.bioconductor.org/packages/release/BiocViews.html#___GeneSetEnrichment
+# http://nar.oxfordjournals.org/content/37/1/1/T2.expansion.html
+# 
+# AMIGO rte http://amigo.geneontology.org/rte 
+# - just redirects to PANTHER, 
+# - the redirect fails with longer lists
+# PANTHER - http://pantherdb.org/tools/compareToRefList.jsp
+# - does not have zebra finch
+# - fails to resolve ~130 chicken genes
+# DAVID http://david.abcc.ncifcrf.gov/
+# - recognizes zebra finch, but probably does not use IEA?
+# - (the top GO categories have like 12 genes each from the whole set)
+# g:Profiler - http://biit.cs.ut.ee/gprofiler/index.cgi
+# - does not have KEGG ids
+
+# the original 'hits' were on KEGG pathways
+# but there's no easy way to get KEGG onthology terms for the genes..?
+# http://www.kegg.jp/kegg/docs/keggapi.html
+
+
+#
+# pull chicken homologs from biomart for those dbs, that don't know zebra finch
+# all GO terms in finch are IEA anyways 
+# (http://geneontology.org/page/automatically-assigned-evidence-codes)
+
+# encode islands into biomart's format
+d_wins_int %>%
+  tidyr::extract(chrom, c("chrom"), regex="chr([[:alnum:]]+)") %>% 
+  mutate(region=paste(chrom, start, end, sep=":")) %>%
+  .$region %>%
+  paste(collapse=",") ->
+  int_regions
+
+# pull the data
+getBM(c("ensembl_gene_id", "ensembl_transcript_id", 
+        "ggallus_homolog_ensembl_gene", "ggallus_homolog_orthology_type", "ggallus_homolog_orthology_confidence"), 
+      c("chromosomal_region"), 
+      int_regions, 
+      mart) ->
+  int_genes
+
+# check what we got
+table(int_genes$ggallus_homolog_orthology_type)
+# ~1k one to one orthologs in chicken out of 1377 hits
+
+# grab the one2one and copy those to the web service
+int_genes %>%
+  filter(ggallus_homolog_orthology_type == "ortholog_one2one") %>%
+  dplyr::select(ggallus_homolog_ensembl_gene) %>%
+  unique %>%
+  write.table(file="data/islands-int-2M.ggal.ensg", quote=F, col.names=F, row.names=F)
+# 955 unique gene ids
+
+# PANTHER on ggal, "Panther GO-Slim BP" without Bonferroni
+# shows overrepresentation of few classes, 
+# RNA processing, sulfur compounds
+# and underrepresentation of developmental and 'housekeeping'
+# (cell adhesion) stuff
+# see panther-islands-int-2M.ggal.txt 
+
+# g:Profiler accepts genomic ranges directly
+d_wins_int %>%
+  tidyr::extract(chrom, c("chrom"), regex="chr([[:alnum:]]+)") %>% 
+  mutate(region=paste(chrom, start, end, sep=":")) %>%
+  dplyr::select(region) ->
+  int_regions
+
+int_regions %>% write.table("data/islands-int.regions", col.names=F, row.names=F, quote=F)
+
+# and g:Profliler has a convenient R interface
+library(gProfileR)
+int_regions %>% gprofiler(organism="tguttata",
+                          region_query=T,
+                          significant=F,
+                          max_p_value=0.3,
+                          correction_method="fdr",
+                          src_filter=c("KEGG", "GO:BP")) ->
+  gprof_test
+
+# load the old data from DAVID
+david <- read.delim("data/DAVID_ens_thresh1_E0.2.txt")
+# the totals seem to be a bit low..
+
+# try to get ensembl finch gene id to kegg pathway map
+# got tgu_ensembl.list from http://www.genome.jp/linkdb/
+# maps 7832 kegg ids to 7832 genes
+# http://www.kegg.jp/kegg/rest/keggapi.html
+# curl http://rest.kegg.jp/link/pathway/tgu > data/kegg-link-pathway-tgu
+# - maps 4249 genes to 165 pathways
+
+
+
+#### pull genes from bioMart based on Ensembl id ####
 
 ensg <- grep("^ENS", igenes$name)
 ig_ens <- igenes[ensg]
@@ -53,6 +241,8 @@ ig_go %>% filter(!is.na(go_id)) %>% .$ensembl_gene_id %>% unique %>% length
 
 write.table(ig_go, file='data/ig_go.tsv', row.names=F, sep="\t", quote=F)
 
+#### get zebra finch gene universe ####
+
 # download zebra finch 'gene universe'
 uni_go <- getBM(c("ensembl_gene_id", 
                   "ensembl_transcript_id", 
@@ -64,20 +254,15 @@ uni_go <- getBM(c("ensembl_gene_id",
 
 write.table(uni_go, file='data/uni_go.tsv', row.names=F, sep="\t", quote=F)
 
+#### GO topn ####
+
 # do a simple topn list analysis for terms in gene islands
-# no good, need contrast against background
 ig_go %>%
   group_by(name_1006) %>%
   summarize(n=n_distinct(ensembl_gene_id)) %>%
   arrange(dplyr::desc(n)) %>%
   View
-
-# TODO: calculate also depletion
-
-# no idea how it works..
-library(topGO)
-# maybe gostats will be better - huge mess;)
-library(GOstats)
+# no good, need contrast against background
 
 # use http://www.ebi.ac.uk/QuickGO to browse
 # check GO.db, interested in GO:0007292 female gamete generation and all descendants
@@ -241,8 +426,8 @@ dbpids <- GOTERM %>%
   arrange(go_id) %>%
   filter(Ontology == "BP")
 
-#
-# look where the song related probes are located
+
+#### song related probes ####
 #
 # name the importatn columns
 colnames(blat)[c(10, 14, 16, 17)] <- c("probe", "chrom", "zf_start", "zf_end")
@@ -284,3 +469,9 @@ ggsave('results/fst_islands-song.pdf', width=20, height=16)
 ggsave('results/fst_islands-song-all-cand.pdf', width=20, height=16)
 
 ggplot(blat, aes(V1)) + geom_histogram()
+
+#### spare parts ####
+
+# after filtering with bedtools..
+library(rtracklayer)
+igenes <- import.bed('data/genes-in-islands.bed')

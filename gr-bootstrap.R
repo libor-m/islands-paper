@@ -43,6 +43,7 @@ find_variants <- function(vars, win_size=1e6, req_points=1e3) {
   gf <- GIntervalTree(gr)
   
   # create whole set of query ranges
+  # windows are centered on the equally spaced points
   irq <- IRanges(start=dfpoints$zf_pos - win_size / 2, end=dfpoints$zf_pos + win_size / 2)
   gq <- GRanges(seqnames=dfpoints$chrom, ranges=irq)
   

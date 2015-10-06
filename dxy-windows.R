@@ -1,6 +1,5 @@
-
 # 
-# look at dxy compared to Fst
+# add Dxy to the measures
 #
 
 setwd("c:/work/lab/slavici-clanek/")
