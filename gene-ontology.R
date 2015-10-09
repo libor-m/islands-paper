@@ -25,65 +25,44 @@ t_boot <- bind_rows(tfst_boot, tdxy_boot)
 # calculate the smooth value)
 #
 
-# convert GenomicRanges object to data frame
-gr_to_bed3 <- function(gr) {
-  data.frame(chrom=gr %>% seqnames, start=gr %>% start, end=gr %>% end)
-}
+# old version, for reference
+source("interval-tools-gr.R")
 
-# data frame (with zf coords) to GRanges
-points_to_gr <- function(d, win_size) {
-  d %>% 
-    mutate(zf_start=max(zf_pos - win_size / 2, 0), zf_end=zf_pos + win_size / 2) %>%
-    select(chrom, zf_start, zf_end) ->
-    islands
-  
-  islands %>% 
-    {IRanges(start=.$zf_start, end=.$zf_end)} ->
-    ir
-
-  GRanges(seqnames=islands$chrom, ranges=ir)
-}
-
-# convert selected points along chromosomes
-# into windows, resolve the overlaps
-points_to_wins <- function(d, win_size=1e6) {
-
-  d %>%
-    points_to_gr(win_size) %>%
-    reduce ->
-    grr
-
-  gr_to_bed3(grr)
-}
-
-# convert data frame to GRanes object
-win_to_gr <- function(d) {
-  GRanges(seqnames=d$chrom, ranges=IRanges(start=d$start, end=d$end))
-}
+# the most interesting should be areas on the intersection of islands
+d_wins_int <- BiocGenerics::intersect(win_to_gr(d_wins_dxy), win_to_gr(d_wins_fst)) %>% gr_to_bed3
 
 
+# non-GRanges version
+source("interval-tools.R")
+
+# need to convert each measure separately
+# because the windows are merged together and there is no 'measure' grouping
 t_boot %>%
   filter(smooth > boot,
          measure == "Fst") %>%
-  points_to_wins(2e6) ->
+  points_to_wins(1e6, 1e6) ->
   d_wins_fst
 
 t_boot %>%
   filter(smooth > boot,
          measure == "Dxy") %>%
-  points_to_wins(2e6) ->
+  points_to_wins(1e6, 1e6) ->
   d_wins_dxy
 
-# the most interesting should be areas on the intersection of islands
-d_wins_int <- BiocGenerics::intersect(win_to_gr(d_wins_dxy), win_to_gr(d_wins_fst)) %>% gr_to_bed3
+# use the new version
+d_wins_int <- dt.intersect(d_wins_dxy, d_wins_fst)
+# results of old and new are the same except for
+# BioC clipping the intervals at 1 instead of 0
 
-# check it the intersection is ok
 bind_rows(d_wins_dxy %>% mutate(measure="Dxy"),
           d_wins_fst %>% mutate(measure="Fst"),
           d_wins_int %>% mutate(measure="both")) %>%
   mutate(id=row_number()) ->
   d_wins
 
+d_wins %>% write.table("data/d_wins.tsv", quote=F, row.names=F, sep="\t")
+
+# visual check if the intersection is ok
 d_wins %>% 
   filter(chrom %in% bigchroms) %>%
   gather(type, pos, start, end) %>%
@@ -126,6 +105,57 @@ getBM(attributes = c("ensembl_gene_id", "ensembl_transcript_id", "go_id", "go_li
       values = c("ENSTGUT00000002388"),
       mart = mart)
 
+#### get genes in islands ####
+#
+# pull chicken homologs from biomart for those dbs, that don't know zebra finch
+# all GO terms in finch are IEA anyways 
+# (http://geneontology.org/page/automatically-assigned-evidence-codes)
+mart <- useMart("ensembl", "tguttata_gene_ensembl")
+
+# encode islands into biomart's format
+encode_wins <- function(dwins)
+  dwins %>%
+    tidyr::extract(chrom, c("chrom"), regex="chr([[:alnum:]]+)") %>% 
+    mutate(region=paste(chrom, start, end, sep=":")) %>%
+    .$region %>%
+    paste(collapse=",")
+
+genes_from_regions <- function(regions) {
+  # need to query only single 'tab' in mart,
+  # so no go terms here..
+  getBM(c("ensembl_gene_id", 
+          "ensembl_transcript_id", 
+          "ggallus_homolog_ensembl_gene", 
+          "ggallus_homolog_orthology_type", 
+          "ggallus_homolog_orthology_confidence"), 
+        c("chromosomal_region"), 
+        regions, 
+        mart)  
+}
+
+# convert wins to regions string 
+# and pull the data
+d_wins %>% 
+  filter (measure == "both") %>%
+  encode_wins %>% 
+  genes_from_regions ->
+  int_genes
+
+# check what we got
+table(int_genes$ggallus_homolog_orthology_type)
+# ~1k one to one orthologs in chicken out of 1377 hits
+
+int_genes %>% write.table("data/islands-int-2M.genes.tsv", row.names=F, quote=F, sep="\t")
+int_genes %>% write.table("data/islands-int-1M-gap1M.genes.tsv", row.names=F, quote=F, sep="\t")
+
+# grab the one2one and copy those to the web service
+int_genes %>%
+  filter(ggallus_homolog_orthology_type == "ortholog_one2one") %>%
+  dplyr::select(ggallus_homolog_ensembl_gene) %>%
+  unique %>%
+  write.table(file="data/islands-int-2M.ggal.ensg", quote=F, col.names=F, row.names=F)
+# 955 unique gene ids
+
 #### GO of genes in islands ####
 
 # GO enrichment tools, each has it's own set of problems..
@@ -151,38 +181,6 @@ getBM(attributes = c("ensembl_gene_id", "ensembl_transcript_id", "go_id", "go_li
 # http://www.kegg.jp/kegg/docs/keggapi.html
 
 
-#
-# pull chicken homologs from biomart for those dbs, that don't know zebra finch
-# all GO terms in finch are IEA anyways 
-# (http://geneontology.org/page/automatically-assigned-evidence-codes)
-
-# encode islands into biomart's format
-d_wins_int %>%
-  tidyr::extract(chrom, c("chrom"), regex="chr([[:alnum:]]+)") %>% 
-  mutate(region=paste(chrom, start, end, sep=":")) %>%
-  .$region %>%
-  paste(collapse=",") ->
-  int_regions
-
-# pull the data
-getBM(c("ensembl_gene_id", "ensembl_transcript_id", 
-        "ggallus_homolog_ensembl_gene", "ggallus_homolog_orthology_type", "ggallus_homolog_orthology_confidence"), 
-      c("chromosomal_region"), 
-      int_regions, 
-      mart) ->
-  int_genes
-
-# check what we got
-table(int_genes$ggallus_homolog_orthology_type)
-# ~1k one to one orthologs in chicken out of 1377 hits
-
-# grab the one2one and copy those to the web service
-int_genes %>%
-  filter(ggallus_homolog_orthology_type == "ortholog_one2one") %>%
-  dplyr::select(ggallus_homolog_ensembl_gene) %>%
-  unique %>%
-  write.table(file="data/islands-int-2M.ggal.ensg", quote=F, col.names=F, row.names=F)
-# 955 unique gene ids
 
 # PANTHER on ggal, "Panther GO-Slim BP" without Bonferroni
 # shows overrepresentation of few classes, 
@@ -202,24 +200,60 @@ int_regions %>% write.table("data/islands-int.regions", col.names=F, row.names=F
 
 # and g:Profliler has a convenient R interface
 library(gProfileR)
-int_regions %>% gprofiler(organism="tguttata",
-                          region_query=T,
-                          significant=F,
-                          max_p_value=0.3,
-                          correction_method="fdr",
-                          src_filter=c("KEGG", "GO:BP")) ->
+int_regions %>% 
+  gprofiler(
+    organism="tguttata",
+    region_query=T,
+    significant=F,
+    max_p_value=0.3,
+    correction_method="fdr",
+    src_filter=c("KEGG", "GO:BP")) ->
   gprof_test
+
+gprof_test %>% arrange(p.value) %>% View
+
+# save it for funneling to google doc (over spreadsheets;):
+gprof_test %>% 
+  arrange(p.value) %>% 
+  dplyr::select(term.name, 
+                p.value, 
+                significant, 
+                term.size, 
+                overlap.size, 
+                recall, 
+                precision) %>%
+  write.table("data/gprof-int-2M.txt", row.names=F, sep="\t")
+
 
 # load the old data from DAVID
 david <- read.delim("data/DAVID_ens_thresh1_E0.2.txt")
 # the totals seem to be a bit low..
 
-# try to get ensembl finch gene id to kegg pathway map
-# got tgu_ensembl.list from http://www.genome.jp/linkdb/
-# maps 7832 kegg ids to 7832 genes
-# http://www.kegg.jp/kegg/rest/keggapi.html
-# curl http://rest.kegg.jp/link/pathway/tgu > data/kegg-link-pathway-tgu
-# - maps 4249 genes to 165 pathways
+
+# GOstats is the first shot
+# https://bioconductor.org/packages/release/bioc/vignettes/GOstats/inst/doc/GOstatsForUnsupportedOrganisms.pdf
+# looks promising, especially part 1.3 (version April 16, 2015)
+# okay, KEGGFrame requires KEGG.db, which is deprecated..
+
+#
+# giving up, will write the code myself
+# 
+source('gene-set-enrichment.R')
+
+kegg <- kegg_get_data('tgu', 'ensembl-tgu')
+
+# here the question is what to use as a background
+# - the whole universe: uni_go: uni_go$ensembl_gene_id
+#   this gives some interesting results, but without statistical significance..
+# - all genes annotated with a pathway: kegg$pathway_genid$genid
+#   this way all the groups seem severely underrepresentes
+
+test_enrichment(unique(int_genes$ensembl_gene_id),
+                unique(uni_go$ensembl_gene_id),
+                kegg$pathway_genid,
+                kegg$pathway_desc) %>%
+  arrange(p.fisher) %>%
+  View
 
 
 

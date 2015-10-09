@@ -22,8 +22,10 @@ zcat $ANN |
 
 # pick song related genes
 # the paper states that blue, orange and dark green modules are 'song modules'
-<song/neuron_10977_mmc3.txt awk '$6 == "blue" || $6 = "orange" || $6 == "darkgreen"' > song/song-modules.tsv
+<data-song/neuron_10977_mmc3.txt awk '$6 == "blue" || $6 = "orange" || $6 == "darkgreen"' > data-song/song-modules.tsv
 # 689 probes
+
+# switch to MetaCentrum
 
 # go search it in the genome, because many of the genes were not annotated back then..
 module add blat-suite-34
