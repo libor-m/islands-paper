@@ -1,0 +1,32 @@
+
+
+
+
+
+Analysis Type:	PANTHER Overrepresentation Test (release 20150430)
+Annotation Version and Release Date:	PANTHER version 10.0 Released 2015-05-15
+Analyzed List:	islands-int-2M.ggal.ensg (Gallus gallus)
+Reference List:	Gallus gallus (all genes in database)
+Bonferroni correction:	false
+PANTHER GO-Slim Biological Process	Gallus gallus - REFLIST (15696)	islands-int-2M.ggal.ensg (842)	islands-int-2M.ggal.ensg (expected)	islands-int-2M.ggal.ensg (over/under)	islands-int-2M.ggal.ensg (fold Enrichment)	islands-int-2M.ggal.ensg (P-value)
+mRNA transcription	36	6	1.93	+	3.11	1.41E-02
+sulfur compound metabolic process	84	12	4.51	+	2.66	2.36E-03
+RNA splicing, via transesterification reactions	100	10	5.36	+	1.86	4.65E-02
+organelle organization	447	34	23.98	+	1.42	2.91E-02
+phosphate-containing compound metabolic process	759	54	40.72	+	1.33	2.35E-02
+nitrogen compound metabolic process	802	56	43.02	+	1.30	2.90E-02
+cell communication	2448	112	131.32	-	.85	3.49E-02
+immune system process	1054	44	56.54	-	.78	4.48E-02
+multicellular organismal process	1254	52	67.27	-	.77	2.69E-02
+single-multicellular organism process	1254	52	67.27	-	.77	2.69E-02
+ectoderm development	507	18	27.20	-	.66	3.88E-02
+system development	997	34	53.48	-	.64	2.28E-03
+mesoderm development	558	17	29.93	-	.57	6.72E-03
+nervous system development	636	19	34.12	-	.56	3.05E-03
+cell-cell adhesion	293	7	15.72	-	.45	1.13E-02
+cell adhesion	451	10	24.19	-	.41	8.49E-04
+skeletal system development	184	4	9.87	-	.41	3.11E-02
+biological adhesion	472	10	25.32	-	.39	4.14E-04
+natural killer cell activation	148	3	7.94	-	.38	4.35E-02
+segment specification	113	1	6.06	-	 < 0.2	1.62E-02
+angiogenesis	156	1	8.37	-	 < 0.2	2.10E-03

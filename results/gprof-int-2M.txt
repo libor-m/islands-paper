@@ -1,0 +1,22 @@
+"term.name"	"p.value"	"significant"	"term.size"	"overlap.size"	"recall"	"precision"
+"cellular amino acid metabolic process"	0.0104	TRUE	204	32	0.025	0.157
+"cellular catabolic process"	0.0242	TRUE	815	88	0.069	0.108
+"regulation of organelle organization"	0.0272	TRUE	602	69	0.054	0.115
+"organelle organization"	0.0288	TRUE	1773	167	0.131	0.094
+"organic acid metabolic process"	0.0452	TRUE	479	57	0.045	0.119
+"single-organism organelle organization"	0.05	TRUE	1309	128	0.1	0.098
+"positive regulation of catabolic process"	0.0551	FALSE	212	31	0.024	0.146
+"oxoacid metabolic process"	0.0633	FALSE	474	56	0.044	0.118
+"protein localization to organelle"	0.0649	FALSE	388	48	0.038	0.124
+"catabolic process"	0.0746	FALSE	959	98	0.077	0.102
+"regulation of cell communication"	0.0756	FALSE	1593	150	0.118	0.094
+"organelle assembly"	0.131	FALSE	283	37	0.029	0.131
+"positive regulation of cellular catabolic process"	0.144	FALSE	184	27	0.021	0.147
+"brain renin-angiotensin system"	0.216	FALSE	3	3	0.002	1
+"regulation of signaling"	0.219	FALSE	1517	141	0.111	0.093
+"carboxylic acid metabolic process"	0.237	FALSE	443	51	0.04	0.115
+"regulation of catabolic process"	0.247	FALSE	367	44	0.035	0.12
+"positive regulation of organelle organization"	0.247	FALSE	324	40	0.031	0.123
+"regulation of response to stimulus"	0.272	FALSE	1777	161	0.126	0.091
+"regulation of protein transport"	0.289	FALSE	348	42	0.033	0.121
+"regulation of hormone metabolic process"	0.326	FALSE	16	6	0.005	0.375

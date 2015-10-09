@@ -1,0 +1,13 @@
+pathway	bin	blen	qin	qlen	qexp	fc	p.fisher	p.binom	p.fisher.fdr	p.binom.fdr	description
+path:tgu04120	76	17488	12	776	3.372	 3.56	0.000336	0.000199	0.0555	0.0328	Ubiquitin mediated proteolysis - Taeniopygia guttata (zebra finch)
+path:tgu04114	66	17488	 9	776	2.929	 3.07	0.004405	0.003190	0.3634	0.2632	Oocyte meiosis - Taeniopygia guttata (zebra finch)
+path:tgu00450	 8	17488	 3	776	0.355	 8.45	0.009760	0.005710	0.4018	0.2693	Selenocompound metabolism - Taeniopygia guttata (zebra finch)
+path:tgu04914	52	17488	 7	776	2.307	 3.03	0.012174	0.009401	0.4018	0.2693	Progesterone-mediated oocyte maturation - Taeniopygia guttata (zebra finch)
+path:tgu04110	79	17488	 9	776	3.505	 2.57	0.012341	0.009795	0.4018	0.2693	Cell cycle - Taeniopygia guttata (zebra finch)
+path:tgu00400	 3	17488	 2	776	0.133	15.02	0.016550	0.008103	0.4018	0.2693	Phenylalanine, tyrosine and tryptophan biosynthesis - Taeniopygia guttata (zebra finch)
+path:tgu00562	43	17488	 6	776	1.908	 3.14	0.017044	0.013350	0.4018	0.2778	Inositol phosphate metabolism - Taeniopygia guttata (zebra finch)
+path:tgu00533	11	17488	 3	776	0.488	 6.15	0.019583	0.013467	0.4039	0.2778	Glycosaminoglycan biosynthesis - keratan sulfate - Taeniopygia guttata (zebra finch)
+path:tgu03060	12	17488	 3	776	0.532	 5.63	0.023721	0.016929	0.4125	0.3104	Protein export - Taeniopygia guttata (zebra finch)
+path:tgu04070	61	17488	 7	776	2.707	 2.59	0.025002	0.020606	0.4125	0.3400	Phosphatidylinositol signaling system - Taeniopygia guttata (zebra finch)
+path:tgu04520	41	17488	 5	776	1.819	 2.75	0.044604	0.037630	0.6453	0.5287	Adherens junction - Taeniopygia guttata (zebra finch)
+path:tgu00970	29	17488	 4	776	1.287	 3.11	0.049863	0.041653	0.6453	0.5287	Aminoacyl-tRNA biosynthesis - Taeniopygia guttata (zebra finch)
