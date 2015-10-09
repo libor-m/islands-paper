@@ -12,7 +12,7 @@
 #
 # the real data is obtained with the same smoothing, without shuffling
 #
-# this shadows half of R base functions (wtf..)
+# this shadows half of R base functions and clashes with dplyr (wtf..)
 # TODO: consider using data.table::foverlaps instead of this behemoth
 library(GenomicRanges)
 
