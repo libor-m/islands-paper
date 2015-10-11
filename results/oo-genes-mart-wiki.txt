@@ -1,0 +1,10 @@
+ensembl_gene_id	chrom	start_position	end_position	hgnc_symbol	wikigene_name	wikigene_description
+ENSTGUG00000011279	1A	55215463	55262602	IGF1	IGF1	insulin-like growth factor 1 (somatomedin C)
+ENSTGUG00000001790	2	30086493	30125026	CUL1	CUL1	cullin 1
+ENSTGUG00000018231	3	3517176	3530572		PPP3R1	protein phosphatase 3, regulatory subunit B, alpha
+ENSTGUG00000005486	3	21135408	21139927	SPDYA	SPDYA	speedy homolog A (Xenopus laevis)
+ENSTGUG00000009488	3	39837048	39990628	RPS6KA2		
+ENSTGUG00000009328	4	52684835	52701909		ANAPC4	anaphase promoting complex subunit 4
+ENSTGUG00000005332	6	5593644	5601347	CDK1	CDK1	cyclin-dependent kinase 1
+ENSTGUG00000000037	13	149437	157731	CDC23	LOC100221396	cell division cycle protein 23 homolog
+ENSTGUG00000003528	18	1754168	1754493	ANAPC11	ANAPC11	anaphase promoting complex subunit 11

@@ -13,7 +13,9 @@ library(dplyr)
 library(ggplot2)
 library(gtools)
 
-sortchrom <- function(df) df %>% mutate(chrom=chrom %>% factor(levels=chrom %>% levels %>% mixedsort %>% rev))
+# reverse version is good for sorting facets, because they're ordered bottom up usually
+sortchrom <- function(df) df %>% mutate(chrom=chrom %>% factor(levels=chrom %>% unique %>% mixedsort))
+sortchrom_r <- function(df) df %>% mutate(chrom=chrom %>% factor(levels=chrom %>% unique %>% mixedsort %>% rev))
 
 #### load data ####
 

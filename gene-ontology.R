@@ -244,10 +244,10 @@ kegg <- kegg_get_data('tgu', 'ensembl-tgu')
 
 # here the question is what to use as a background
 # - the whole universe: uni_go: uni_go$ensembl_gene_id
-#   this gives some interesting results, but without statistical significance..
+#   this gives some interesting results, but without statistical 
+#   significance after FDR correction ..
 # - all genes annotated with a pathway: kegg$pathway_genid$genid
 #   this way all the groups seem severely underrepresentes
-
 test_enrichment(unique(int_genes$ensembl_gene_id),
                 unique(uni_go$ensembl_gene_id),
                 kegg$pathway_genid,
@@ -255,8 +255,74 @@ test_enrichment(unique(int_genes$ensembl_gene_id),
   arrange(p.fisher) %>%
   View
 
+test_enrichment(unique(int_genes$ensembl_gene_id),
+                unique(uni_go$ensembl_gene_id),
+                kegg$pathway_genid,
+                kegg$pathway_desc) %>%
+  arrange(p.fisher) %>%
+  filter(p.fisher <= 0.05) ->
+  kegg_enrich_universe
 
+kegg_enrich_universe %>%
+  format(digits=3) %>%
+  write.table("results/KEGG-islands-1M.txt", sep="\t", row.names=F, quote=F)
 
+#### check the genes from the oocyte groups ####
+
+# extract the genes from the serialized form
+# into one ene per row
+# do() is a bit difficult with column naming, 
+# have to use tiny trick with `colanmes<-`
+kegg_enrich_universe %>%
+  select(description, qin.list) %>%
+  filter(grepl("oocyte", description, ignore.case=T)) %>%
+  group_by(description) %>%
+  do(data.frame(ensg=strsplit(.$qin.list, ","))) %>%
+  `colnames<-`(c("description", "ensg")) ->
+  oo_genes
+
+# take the unique genes, and pull some more information on 
+# them from biomart
+getBM(c("ensembl_gene_id",
+        "chromosome_name",
+        "start_position",
+        "end_position",
+        "go_id", 
+        "go_linkage_type", 
+        "name_1006"), 
+      filters = c("ensembl_gene_id"),
+      values = oo_genes$ensg %>% unique,
+      mart = mart) ->
+  oo_mart
+
+oo_mart %>% write.table("results/oo-genes-mart.txt", sep="\t", row.names=F, quote=F)
+
+# leave out GO, use just wikigene
+getBM(c("ensembl_gene_id",
+        "chromosome_name",
+        "start_position",
+        "end_position",
+        "hgnc_symbol",
+        "wikigene_name", 
+        "wikigene_description"), 
+      filters = c("ensembl_gene_id"),
+      values = oo_genes$ensg %>% unique,
+      mart = mart) ->
+  oo_mart
+
+# output table for the paper
+oo_mart %>%
+  rename(chrom=chromosome_name) %>% 
+  sortchrom %>% 
+  arrange(chrom, start_position) %>% 
+  write.table("results/oo-genes-mart-wiki.txt", sep="\t", row.names=F, quote=F)
+
+# check chromosome co-localization
+oo_mart %>% 
+  group_by(chromosome_name) %>%
+  summarise(ngenes=ensembl_gene_id %>% unique %>% length) %>%
+  arrange(desc(ngenes))
+  
 #### pull genes from bioMart based on Ensembl id ####
 
 ensg <- grep("^ENS", igenes$name)

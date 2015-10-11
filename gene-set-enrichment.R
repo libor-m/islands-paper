@@ -41,6 +41,7 @@ test_enrichment <- function(query, background, term_to_gene, term_to_desc) {
     # with query and background
     summarise(bin  = length(intersect(genid, background)), 
               blen = length(background),
+              qin.list = paste(intersect(genid, query), collapse=","),
               qin  = length(intersect(genid, query)),
               qlen = length(query)) %>%
     
@@ -54,7 +55,10 @@ test_enrichment <- function(query, background, term_to_gene, term_to_desc) {
            p.binom.fdr  = p.adjust(p.binom, "fdr")) %>%
     
     # attach legible term descriptions
-    left_join(term_to_desc)
+    left_join(term_to_desc) %>%
+    
+    # put the gene list to the end of the table
+    select(-qin.list, qin.list)
 }
 
 # pull the needed data from KEGG API
