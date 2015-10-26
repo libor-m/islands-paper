@@ -8,7 +8,7 @@
 #  table row for each term, set sizes, intersection sizes, p-values
 # 
 # method:
-#  see the end of doc/Gene_list_enrichment_Mar10.pdf for p-values
+#  see the end of doc/Gene_list_enrichment_Mar10.pdf for p-value calculations
 #  the rest is just some data wrangling
 
 library(tidyr)
@@ -178,4 +178,4 @@ d_pathway_ensg %>%
   # filter(grepl("oo", description, ignore.case=T)) %>%
   View
 
-}
+} # end 'no source'
