@@ -15,7 +15,7 @@ library(ggplot2)
 # reduce without using GenomicRanges
 # margin=1 connects book-ended intervals,
 # increasing it merges intervals further apart
-reduce_intervals <- function(dints, margin=1)
+reduce_intervals_zf <- function(dints, margin=1)
   dints %>%
     group_by(chrom) %>%
     arrange(zf_start) %>%
@@ -34,22 +34,54 @@ points_to_wins <- function(dpoints, win_size=1e6, margin=1)
   dpoints %>% 
   mutate(zf_start=pmax(zf_pos - win_size / 2, 0), zf_end=zf_pos + win_size / 2) %>%
   select(chrom, zf_start, zf_end) %>%
-  reduce_intervals(margin)
+  reduce_intervals_zf(margin)
 
 # overlap intersection
 # found in 
-# http://stackoverflow.com/questions/27574775/is-it-possible-to-use-the-r-data-table-funcion-foverlaps-to-find-the-intersectio
-dt.intersect <- function(table1, table2) {
-  setkey(setDT(table1), chrom, start, end)
-  setkey(setDT(table2), chrom, start, end)
+# http://stackoverflow.com/questions/27574775/..
+# ../is-it-possible-to-use-the-r-data-table-funcion-foverlaps-to-find-the-intersectio
+dt.intersect <- function(query_bigger, subj_smaller) {
+  setkey(setDT(query_bigger), chrom, start, end)
+  setkey(setDT(subj_smaller), chrom, start, end)
 
-  resultTable <- foverlaps(table1, table2, nomatch = 0)
+  resultTable <- foverlaps(query_bigger, subj_smaller, nomatch = 0)
 
   resultTable[, start := pmax(start, i.start)]
   resultTable[, end := pmin(end, i.end)]
   resultTable[, `:=`(i.start = NULL, i.end = NULL)]
   
   as.data.frame(resultTable)
+}
+
+# input is chrom, start, end
+reduce_intervals <- function(dints, margin=1)
+  dints %>%
+  group_by(chrom) %>%
+  arrange(start) %>%
+  mutate(prev_end = end %>% lag,
+         tail = prev_end %>% replace(is.na(prev_end), 0) %>% cummax,
+         sw = start > tail + margin,
+         newfeat = sw %>% cumsum %>% as.factor) %>% 
+  group_by(chrom, newfeat) %>%
+  summarise(start = start %>% min,
+            end = end %>% max) %>%
+  select(-newfeat) %>%
+  ungroup
+
+# intervals are chrom, start, end
+# genome is chrom, start, end
+# 1 based coordinates
+interval.complement <- function(intervals, genome) {
+  intervals %>%
+    reduce_intervals %>% 
+    left_join(genome %>% select(chrom, len), by="chrom") %>%
+    group_by(chrom) %>%
+    do(data.frame(
+         start=c(1, .$end),
+         end=c(.$start, .$len %>% head(1))
+       )) %>% 
+    reduce_intervals %>%
+    filter(start <= end)
 }
 
 #### dev code ####
