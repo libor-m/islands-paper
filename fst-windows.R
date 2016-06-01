@@ -89,7 +89,7 @@ dvar %>%
   geom_histogram()
 
 # check whether 'chromosomes' are covered with variants
-dfai <- read.delim("data/lp2.fasta.fai", 
+dfai <- read.delim("data-genome//lp2.fasta.fai", 
                    header=F,
                    col.names=c("chrom", "len", "start", "x", "y"))
 

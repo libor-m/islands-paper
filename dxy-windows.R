@@ -85,6 +85,7 @@ tdxy_boot %>%
   ggplot(aes(value, fill=type)) +
   geom_density(colour=NA, alpha=0.7)
 
+
 # the full calculation
 reps <- 1:25000
 lt <- sapply(reps, function(x) smoothed_values(ovr_dxy, rand_var(daf_dxy, "dxy"))$smooth)

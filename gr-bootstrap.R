@@ -66,23 +66,60 @@ smoothed_values <- function(hits, values) {
     ungroup
 }
 
+# `sample()` is insane, sampling a vector of length 1 - c(N)
+# returns a random permutation of ints < N
+sane_sample <- function(x) {
+  if(length(x) > 1) {
+    sample(x)
+  } else {
+    x
+  }
+}
+
+
 # fst randomized by sampling the same chromosome
 rand_fst <- function(d)
   d %>% 
   select(chrom, zf_pos, fst) %>%
   group_by(chrom) %>%
-  mutate(fst=sample(fst)) %>%
+  mutate(fst=sane_sample(fst)) %>%
   .[,"fst"] %>%
   .[[1]]
 
 # random permutation in the same chromosome
 # mutate instead of sample alone to permute inside chromosomes
 # .dots is a bit excersising of NSE, the resulting name could be fixed..
-rand_var <- function(d, var="fst") {
+
+# FUCK R .. spent an hour debugging this:
+# If x has length 1, is numeric (in the sense of is.numeric) and x >= 1, 
+# sampling via sample takes place from 1:x. 
+# Note that this convenience feature may lead to undesired behaviour 
+# when x is of varying length in calls such as sample(x). 
+# .. sample()'s surprise -- example
+rand_var0 <- function(d, var="fst") {
+  sane_sample <- function(x) {
+    if(length(x) > 1) {
+      sample(x)
+    } else {
+      x
+    }
+  }
+  
   d %>% 
   select_("chrom", "zf_pos", var) %>%
   group_by(chrom) %>%
-  mutate_(rand=paste0("sample(", var, ")")) %>%
+  mutate_(rand=paste0("sane_sample(", var, ")")) %>%
   .[,"rand"] %>%
   .[[1]]
+}
+
+# need dplyr v0.4+
+# https://github.com/hadley/dplyr/issues/708
+rand_var <- function(d, col="fst") {
+  d %>%
+    select_("chrom", col) %>%
+    rename_(.dots = setNames(col, "var")) %>%
+    mutate(rand = sane_sample(var)) %>%
+    .[,"rand"] %>%
+    .[[1]]
 }

@@ -247,7 +247,7 @@ kegg <- kegg_get_data('tgu', 'ensembl-tgu')
 #   this gives some interesting results, but without statistical 
 #   significance after FDR correction ..
 # - all genes annotated with a pathway: kegg$pathway_genid$genid
-#   this way all the groups seem severely underrepresentes
+#   this way all the groups seem severely underrepresented
 test_enrichment(unique(int_genes$ensembl_gene_id),
                 unique(uni_go$ensembl_gene_id),
                 kegg$pathway_genid,

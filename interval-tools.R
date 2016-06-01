@@ -32,9 +32,10 @@ reduce_intervals_zf <- function(dints, margin=1)
 # convert points to windows of win_size centered around each point
 points_to_wins <- function(dpoints, win_size=1e6, margin=1)
   dpoints %>% 
-  mutate(zf_start=pmax(zf_pos - win_size / 2, 0), zf_end=zf_pos + win_size / 2) %>%
-  select(chrom, zf_start, zf_end) %>%
-  reduce_intervals_zf(margin)
+    mutate(zf_start=pmax(zf_pos - win_size / 2, 0), 
+           zf_end=zf_pos + win_size / 2) %>%
+    select(chrom, zf_start, zf_end) %>%
+    reduce_intervals_zf(margin)
 
 # overlap intersection
 # found in 
