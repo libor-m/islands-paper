@@ -75,12 +75,12 @@ tdxy %>%
 reps <- 1:100
 reps <- 1:25000
 lt <- sapply(reps, function(x) smoothed_values(ovr_dxy, rand_var(ddxy_fix, "dxy_rel"))$smooth)
-lt %>% save(file='data/bootstraps-dxy-gene-rel.RData')
-lt %>% save(file='data/bootstraps-dxy-gene.RData')
+lt %>% save(file='data-gene-dxy/bootstraps-dxy-gene-rel.RData')
+lt %>% save(file='data-gene-dxy/bootstraps-dxy-gene.RData')
 
 # load bootstrap data if ever needed again;)
 # (magrittr used . as the name)
-load('data/bootstraps-dxy-gene-rel.RData')
+load('data-gene-dxy/bootstraps-dxy-gene-rel.RData')
 lt <- .
 
 smoothed_values(ovr_dxy, ddxy_fix$dxy_abs) %>% 
@@ -102,12 +102,12 @@ smoothed_values(ovr_dxy, ddxy_fix$dxy_rel) %>%
   tdxy_boot
 
 tdxy_boot %>%
-  write.table('data/dxy-gene-bootstrap.tsv', 
+  write.table('data-gene-dxy/dxy-gene-bootstrap.tsv', 
               sep="\t",
               quote=F, 
               row.names=F)
 
-read_tsv('data/dxy-gene-bootstrap.tsv') -> tdxy_boot
+read_tsv('data-gene-dxy/dxy-gene-bootstrap.tsv') -> tdxy_boot
 
 tdxy_boot %>% 
   gather(type, value, smooth, boot_max:boot_q99) %>% 
@@ -153,21 +153,66 @@ tdxy_boot %>%
   facet_wrap(~chrom, ncol=1)  
 ggsave('results/dxy-gene-ratio-quants.pdf', width=8, height=12)
 
-tdxy_boot %>%
-  filter(smooth > boot_q99) %>%
-  select(chrom, zf_pos, nvars)
+tdxy_boot %>% 
+  filter(chrom %in% bigchroms) %>%
+  select(chrom, zf_pos, smooth, starts_with("boot")) %>% 
+  gather(quant, boot, smooth, starts_with("boot")) %>% 
+  ggplot(aes(zf_pos, boot, colour = quant)) +
+  geom_point(size=0.5, alpha=0.7) +
+  facet_wrap(~chrom, ncol=1) +
+  ylim(0, 0.005)
+ggsave('results/gene-dxy-bootstraps-point.pdf', width=10, height=16)
 
-#### convert q99 to islands ####
+#### convert to islands ####
 source("interval-tools.R")
+
+tdxy_boot %>%
+  filter(smooth > boot_max) %>%
+  points_to_wins(1e6, 1e6) ->
+  d_wins_max
 
 tdxy_boot %>%
   filter(smooth > boot_q99) %>%
   points_to_wins(1e6, 1e6) ->
-  d_wins
+  d_wins_99
 
 tdxy_boot %>%
-  filter(smooth > boot_q99) %>%
-  select(chrom, zf_pos, nvars)
+  filter(smooth > boot_q75) %>%
+  points_to_wins(1e6, 1e6) ->
+  d_wins_75
+
+tdxy_boot %>%
+  filter(smooth > boot_q95) %>%
+  points_to_wins(1e6, 1e6) ->
+  d_wins_95
+
+#### genes in islands ####
+read_tsv('results/oo-genes-mart-wiki.txt') ->
+  oo_genes
+
+# chceck the overlap of oo genes and windows manually
+# - this does not work well, genes are to small;)
+oo_genes %>%
+  select(chrom, start=start_position, end=end_position) %>%
+  mutate(type="oo genes",
+         chrom=as.character(chrom)) %>%
+  bind_rows(d_wins_99 %>% mutate(type="win 99")) %>% 
+  mutate(id = row_number()) %>%
+  gather(ptype, pos, start, end) %>% 
+  ggplot(aes(pos, y=type, , colour=type, group=id)) +
+  geom_line(size=2) +
+  facet_wrap(~chrom, ncol = 1, switch = "y")
+
+d_wins_95 %>%
+  mutate(id = row_number(),
+         type="windows") %>%
+  gather(ptype, pos, start, end) %>% 
+  ggplot(aes(pos, y=type, colour=type)) +
+  geom_line(aes(group=id), size=2) +
+  geom_point(aes(x=start_position), data=oo_genes %>% 
+               mutate(chrom=paste0("chr", chrom), type="genes")) +
+  facet_wrap(~chrom, ncol = 1, switch="y")
+ggsave('results/gene-dxy-oo-genes-q95.pdf', width=10, height=16)
 
 #### trying to fix `sample()`'s insanity ####
 

@@ -7,6 +7,7 @@ library(GenomicRanges)
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(readr)
 library(gtools)
 
 #### load data ####
@@ -61,6 +62,7 @@ bind_rows(d_wins_dxy %>% mutate(measure="Dxy"),
   d_wins
 
 d_wins %>% write.table("data/d_wins.tsv", quote=F, row.names=F, sep="\t")
+read_delim('data/d_wins.tsv', delim = " ") -> d_wins
 
 # visual check if the intersection is ok
 d_wins %>% 
@@ -83,14 +85,15 @@ d_wins_int %>% write.table(file='data/islands-int.bed', row.names=F, col.names=F
 
 # connect to ensembl's biomart
 library(biomaRt)
-mart <- useMart("ensembl")
+listMarts(host="www.ensembl.org")
+mart <- useMart("ENSEMBL_MART_ENSEMBL", host="www.ensembl.org")
 
 # check what they have
 dmart <- listDatasets(mart)
 dmart %>% filter(grepl("Tae", description))
 
 # connect to zebra finch
-mart <- useMart("ensembl", "tguttata_gene_ensembl")
+mart <- useMart("ENSEMBL_MART_ENSEMBL", "tguttata_gene_ensembl", host="www.ensembl.org")
 # check the filter names
 listFilters(mart) %>% View
 
@@ -353,6 +356,7 @@ uni_go <- getBM(c("ensembl_gene_id",
                   "go_linkage_type"), "", "", mart)
 
 write.table(uni_go, file='data/uni_go.tsv', row.names=F, sep="\t", quote=F)
+read_tsv('data-annot/uni_go.tsv') -> uni_go
 
 #### GO topn ####
 
@@ -569,6 +573,134 @@ ggsave('results/fst_islands-song.pdf', width=20, height=16)
 ggsave('results/fst_islands-song-all-cand.pdf', width=20, height=16)
 
 ggplot(blat, aes(V1)) + geom_histogram()
+
+
+#### per gene dxy ####
+
+# read fst windows
+read_delim('data/d_wins.tsv', delim = " ") %>%
+  filter(measure == "Fst") -> d_wins
+
+read_tsv('data-gene-dxy/contigs_dxy_avg_to_fst_isl.txt') %>%
+  rename(chrom = zf_contig_chrom, 
+         start = zf_contig_start, 
+         end = zf_contig_end) %>%
+  mutate(dxy_rel = dxy_abs / contig_length) ->
+  ddxy
+
+# for each contig find an island that contains the contig in d_wins
+# and add it's id to the contig
+
+library(data.table)
+
+# d_wins is small table with large spans (-> y, keyed)
+# ddxy is big table -> x
+setkey(setDT(d_wins), chrom, start, end)
+foverlaps(setDT(ddxy), d_wins, type = "within") %>%
+  filter(!is.na(measure)) -> dovr
+
+foverlaps(setDT(ddxy), d_wins, type = "within") ->
+  d_join
+
+# plot intra vs inter fst island dxy
+d_join %>%
+  ggplot(aes(dxy_rel, fill = is.na(measure))) +
+  geom_density(alpha=0.5, colour=NA) +
+  xlim(0, 0.01)
+
+dovr %>%
+  group_by(id) %>%
+  summarise(n=n()) %>% 
+  dim
+
+dovr %>% write.table("data-gene-dxy/contigs-in-fst-wins.tsv", sep = "\t", quote=F, row.names=F)
+read_tsv("data-gene-dxy/contigs-in-fst-wins.tsv") -> dovr
+
+# mean relative  dxy per island
+dovr %>%
+  group_by(chrom, start, end) %>%
+  summarise(dxy_rel_mean = dxy_rel %>% mean) %>%
+  ungroup ->
+  dovrmean
+
+dovrmean %>%
+  ggplot(aes(dxy_rel_mean)) +
+  geom_histogram()
+
+dovrmean %>%
+  arrange(desc(dxy_rel_mean)) %>% View
+
+# find some limit for picking the islands
+dovrmean %>%  .$dxy_rel_mean %>%
+  quantile(probs = c(.5, .75, .95))
+
+# mean looks usable as a limit
+dovrmean %>%
+  .$dxy_rel_mean %>%
+  mean ->
+  mean_island_dxy
+
+d_join %>%
+  .$dxy_rel %>%
+  mean ->
+  mean_genome_dxy
+
+# get the genes in selected windows
+dovrmean %>%
+  filter (dxy_rel_mean > mean_genome_dxy) %>%
+  encode_wins %>% 
+  genes_from_regions ->
+  int_genes
+
+
+kegg <- kegg_get_data_offline()
+# kegg <- kegg_get_data('tgu', 'Ensembl')
+
+# here the question is what to use as a background
+# - the whole universe: uni_go: uni_go$ensembl_gene_id
+#   this gives some interesting results, but without statistical 
+#   significance after FDR correction ..
+# - all genes annotated with a pathway: kegg$pathway_genid$genid
+#   this way all the groups seem severely underrepresented
+test_enrichment(unique(int_genes$ensembl_gene_id),
+                unique(uni_go$ensembl_gene_id),
+                kegg$pathway_genid,
+                kegg$pathway_desc) %>%
+  arrange(p.fisher) %>%
+  View
+
+test_enrichment(unique(int_genes$ensembl_gene_id),
+                unique(uni_go$ensembl_gene_id),
+                kegg$pathway_genid,
+                kegg$pathway_desc) %>%
+  arrange(p.fisher) %>%
+  filter(p.fisher <= 0.05) %>%
+  format(digits=3) %>%
+  write.table("results/KEGG-dxy-islands-1M.txt", sep="\t", row.names=F, quote=F)
+
+# test enrichment for fst islands only
+d_wins %>%
+  encode_wins %>% 
+  genes_from_regions ->
+  int_genes
+
+test_enrichment(unique(int_genes$ensembl_gene_id),
+                unique(uni_go$ensembl_gene_id),
+                kegg$pathway_genid,
+                kegg$pathway_desc) %>%
+  arrange(p.fisher) %>%
+  View
+
+# directly save the results
+test_enrichment(unique(int_genes$ensembl_gene_id),
+                unique(uni_go$ensembl_gene_id),
+                kegg$pathway_genid,
+                kegg$pathway_desc) %>%
+  arrange(p.fisher) %>%
+  filter(p.fisher <= 0.05) %>%
+  format(digits=3) %>%
+  write.table("results/KEGG-fst-islands-1M.txt", sep="\t", row.names=F, quote=F)
+
 
 #### spare parts ####
 
