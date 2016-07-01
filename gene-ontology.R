@@ -81,60 +81,13 @@ d_wins_fst %>% write.table(file='data/islands-fst.bed', row.names=F, col.names=F
 d_wins_dxy %>% write.table(file='data/islands-dxy.bed', row.names=F, col.names=F, sep="\t", quote=F, eol="\n")
 d_wins_int %>% write.table(file='data/islands-int.bed', row.names=F, col.names=F, sep="\t", quote=F, eol="\n")
 
-#### connect to biomart ####
-
-# connect to ensembl's biomart
-library(biomaRt)
-listMarts(host="www.ensembl.org")
-mart <- useMart("ENSEMBL_MART_ENSEMBL", host="www.ensembl.org")
-
-# check what they have
-dmart <- listDatasets(mart)
-dmart %>% filter(grepl("Tae", description))
-
-# connect to zebra finch
-mart <- useMart("ENSEMBL_MART_ENSEMBL", "tguttata_gene_ensembl", host="www.ensembl.org")
-# check the filter names
-listFilters(mart) %>% View
-
-# check attribute names
-listAttributes(mart) %>% filter(grepl("go", name, ignore.case=T)) %>% View
-listAttributes(mart) %>% filter(grepl("gal", name, ignore.case=T)) %>% View
-listAttributes(mart) %>% filter(grepl("name", name, ignore.case=T)) %>% View
-
-# test mart
-getBM(attributes = c("ensembl_gene_id", "ensembl_transcript_id", "go_id", "go_linkage_type", "name_1006"), 
-      filters = c("ensembl_transcript_id"),
-      values = c("ENSTGUT00000002388"),
-      mart = mart)
 
 #### get genes in islands ####
 #
 # pull chicken homologs from biomart for those dbs, that don't know zebra finch
 # all GO terms in finch are IEA anyways 
 # (http://geneontology.org/page/automatically-assigned-evidence-codes)
-mart <- useMart("ensembl", "tguttata_gene_ensembl")
-
-# encode islands into biomart's format
-encode_wins <- function(dwins)
-  dwins %>%
-    tidyr::extract(chrom, c("chrom"), regex="chr([[:alnum:]]+)") %>% 
-    mutate(region=paste(chrom, start, end, sep=":")) %>%
-    .$region %>%
-    paste(collapse=",")
-
-genes_from_regions <- function(regions) {
-  # need to query only single 'tab' in mart,
-  # so no go terms here..
-  getBM(c("ensembl_gene_id", 
-          "ensembl_transcript_id", 
-          "ggallus_homolog_ensembl_gene", 
-          "ggallus_homolog_orthology_type", 
-          "ggallus_homolog_orthology_confidence"), 
-        c("chromosomal_region"), 
-        regions, 
-        mart)  
-}
+source(biomaRt)
 
 # convert wins to regions string 
 # and pull the data
@@ -577,6 +530,8 @@ ggplot(blat, aes(V1)) + geom_histogram()
 
 #### per gene dxy ####
 
+source('gene-set-enrichment.R')
+
 # read fst windows
 read_delim('data/d_wins.tsv', delim = " ") %>%
   filter(measure == "Fst") -> d_wins
@@ -604,10 +559,27 @@ foverlaps(setDT(ddxy), d_wins, type = "within") ->
 
 # plot intra vs inter fst island dxy
 d_join %>%
-  ggplot(aes(dxy_rel, fill = is.na(measure))) +
+  mutate(`In Fst Island` = !is.na(measure)) %>%
+  ggplot(aes(dxy_rel, fill = `In Fst Island`)) +
   geom_density(alpha=0.5, colour=NA) +
   xlim(0, 0.01)
+ggsave('results/dxy-gene-in-out-islands.pdf', width=8, height=6)
 
+d_join %>%
+  ggplot(aes(is.na(measure), dxy_rel)) +
+  geom_boxplot()
+
+d_join %>%
+  group_by(island=!is.na(measure)) %>%
+  summarise(mean=mean(dxy_rel), median=median(dxy_rel))
+
+d_join %>%
+  mutate(island=!is.na(measure)) %>%
+  select(island, dxy_rel) %>%
+  t.test(dxy_rel ~ island, .)
+
+  
+  View
 dovr %>%
   group_by(id) %>%
   summarise(n=n()) %>% 
@@ -646,15 +618,27 @@ d_join %>%
   mean_genome_dxy
 
 # get the genes in selected windows
+source("mart.R")
+
 dovrmean %>%
   filter (dxy_rel_mean > mean_genome_dxy) %>%
   encode_wins %>% 
   genes_from_regions ->
   int_genes
 
+# save data for vasek
+dovrmean %>%
+  mutate(high_dxy = dxy_rel_mean > mean_genome_dxy) %>%
+  write.table("data-gene-dxy/fst-islands-mean-dxy.tsv", sep="\t", row.names=F, quote=F)
+
+int_genes %>%
+  write.table("data-gene-dxy/fst-high-dxy-islands-ensgenes.tsv", sep="\t", row.names=F, quote=F)
+
 
 kegg <- kegg_get_data_offline()
 # kegg <- kegg_get_data('tgu', 'Ensembl')
+
+kegg$pathway_genid %>% write.table("data-annot/pathway_ensgene.tsv", quote=F, row.names=F, sep="\t")
 
 # here the question is what to use as a background
 # - the whole universe: uni_go: uni_go$ensembl_gene_id
@@ -701,6 +685,12 @@ test_enrichment(unique(int_genes$ensembl_gene_id),
   format(digits=3) %>%
   write.table("results/KEGG-fst-islands-1M.txt", sep="\t", row.names=F, quote=F)
 
+# more data for vasek
+int_genes %>%
+  write.table("data-gene-dxy/fst-islands-ensgenes.tsv", sep="\t", row.names=F, quote=F)
+
+read_tsv('data-gene-dxy/fst-high-dxy-islands-ensgenes.tsv') -> int_high
+setdiff(int_genes, int_high) -> int_low
 
 #### spare parts ####
 
