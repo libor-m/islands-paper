@@ -2,10 +2,9 @@
 # do some basic checks on the data and 
 # calculate running window statistics for variants
 #
-setwd("c:/work/lab/slavici-clanek/")
+# setwd("c:/work/lab/slavici-clanek/")
 
-library(dplyr)
-library(ggplot2)
+library(tidyverse)
 library(gtools)
 
 #### load and merge data ####
@@ -15,7 +14,7 @@ library(gtools)
 sortchrom <- function(df) df %>% ungroup %>%mutate(chrom=chrom %>% factor(levels=chrom %>% levels %>% mixedsort %>% rev))
 
 dvar <- read.delim("data/variant-table.tsv")
-dfst <- read.delim('data/lp2-var-filtered.weir.fst', col.names=c("chrom", "pos", "fst"))
+dfst <- read.delim('data-genome/lp2-var-filtered.weir.fst', col.names=c("chrom", "pos", "fst"))
 
 # merge fst into variants information
 # some rows in dfst are missing the value, filter those out
@@ -89,7 +88,7 @@ dvar %>%
   geom_histogram()
 
 # check whether 'chromosomes' are covered with variants
-dfai <- read.delim("data-genome//lp2.fasta.fai", 
+dfai <- read.delim("data-genome/lp2.fasta.fai", 
                    header=F,
                    col.names=c("chrom", "len", "start", "x", "y"))
 
@@ -164,25 +163,22 @@ bigchroms <- c("chr1", "chr1A", "chr2", "chr3", "chr4", "chrZ")
 
 
 #### load the bootstrap workers ####
-source("gr-bootstrap.R")
+source("bootstrap.R")
 
+# a few checks 
 
-#### timing checks ####
-ptm <- proc.time()
-ovr <- find_variants(daf)
-proc.time() - ptm
+system.time(ovr <- find_variants(daf))
 # 11 seconds
+# .37 seconds with data.table
 
 ovr %>% View
 
-ptm <- proc.time()
-t <- smoothed_values(ovr, daf$fst)
-proc.time() - ptm
+system.time(
+  t <- smoothed_values(ovr, daf$fst))
 # 0.5 seconds
 
-ptm <- proc.time()
-t <- smoothed_values(ovr, rand_var(daf, "fst"))
-proc.time() - ptm
+system.time(
+  t <- smoothed_values(ovr, rand_var(daf, "fst")))
 # <1 second
 # that is 25k in few hours
 
@@ -197,13 +193,28 @@ fst_plot <- function(x, chroms)
 t %>% fst_plot(bigchroms)
 
 #### calculate the bootstrap ####
+# group the variants 
+daf %>%
+  mutate(AZ = grepl("^chrZ", chrom)) %>%
+  group_by(AZ) ->
+  daf_az
+
+# reps <- 1:250
 reps <- 1:25000
-lt <- sapply(reps, function(x) smoothed_values(ovr, rand_fst(daf))$smooth)
-lt %>% save(file='data/bootstraps-fst.RData')
+system.time(
+  lt <- sapply(reps, function(x) smoothed_values(ovr, rand_var(daf_az, "fst"))$smooth))
+#    user  system elapsed 
+# 4951.27  253.64 5247.94
+
+# save the precious result immediately ;)
+lt %>% save(file = 'data/bootstraps-fst.RData')
 
 # add bootstrap and measure tag to the real smoothed values
 smoothed_values(ovr, daf$fst) %>% 
-  mutate(boot = apply(lt, 1, max), measure="Fst") ->
+  mutate(boot = apply(lt, 1, max), 
+         boot_q99 = apply(lt, 1, quantile, .99, type = 8),
+         boot_q95 = apply(lt, 1, quantile, .95, type = 8),
+         measure = "Fst") ->
   tfst_boot
 
 tfst_boot %>% write.table("data/tfst_boot.tsv", sep="\t", quote=F, row.names=F)
@@ -220,7 +231,7 @@ tfst_boot %>%
   geom_line(aes(y=boot), colour="yellow") +
   geom_line(aes(y=smooth), colour="blue") + 
   geom_point(aes(y=zf_pos), y=0.2, colour="blue", size=2, data=tfst_boot %>% filter(smooth > boot, chrom %in% bigchroms)) +
-  facet_wrap(~chrom, ncol=1) +
+  facet_wrap(~chrom, ncol=1, ) +
   ylim(c(-.1, .2)) +
   ggtitle("nightingale speciation islands as mapped to zebra finch chromosomes, 25k bootstrap")
 
