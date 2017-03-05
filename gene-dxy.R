@@ -214,6 +214,7 @@ d_wins_95 %>%
   facet_wrap(~chrom, ncol = 1, switch="y")
 ggsave('results/gene-dxy-oo-genes-q95.pdf', width=10, height=16)
 
+
 #### trying to fix `sample()`'s insanity ####
 
 # rand_var looks broken, implement without mutate()
