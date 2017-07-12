@@ -1,0 +1,9 @@
+Jinak obávám se, že to přepočítávání downstream věcí bude bohužel potřeba už jenom kvůli výpočtu Dxy, ve kterém byla drobná chyba (viz níže). Navrhuju následující postup.
+
+1. Vašek teď přepočítá Dxy, případně, pokud bys to mohl udělat ty (Vašek ti dá návod a napíše, co by se mělo opravit) určitě bude rád vzhledem k tomu, že už také pracuje a navíc dodělává jiný manuskript. Kdyžtak se tedy prosím domluvte, kdo to udělá.
+
+2. Podle toho, jak se hodnoty Dxy změní po novém výpočtu, můžeme zvážit, jeslti nezkusit znovu bootstrap analýzu obdobně jako pro Fst (což navrhují recenzenti). Pokud by stejně jako minule vycházelo hrozně málo ostrovů s překryvem Fst a Dxy (a obecně hrozně málo ostrovů Dxy), navrhovala bych nechat současný postup a vybrat Fst ostrovy s nadprůměrným Dxy.
+
+3. Pak se přepočítá KEGG analýza.
+
+3. Ve finále může Vašek přepočítat ten MK test.
