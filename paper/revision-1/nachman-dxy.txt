@@ -1,0 +1,10 @@
+Radka:
+
+There are two issues here.  One concerns data quality and how Dxy is calculated, the other concerns the need for haplotypes.  Dxy is simply the average number of pairwise differences between alleles sampled from two populations.  If you had one allele from each population that was 100 bp long and the two alleles differed at two sites, then Dxy would be 0.02.  The numerator is the number of differences, and the denominator is the number of bases surveyed.  So the reviewer is correct that it is probably inappropriate to take the sum of pairwise differences and divide by the total length of the contig, unless all the invariant sites were called with the same criteria as the variable sites.  If not, then the denominator should be the sum of variable and invariable sites that were filtered and called using the same criteria.
+
+The second issue is the need to reconstruct haplotypes.   I guess it is possible to calculate Dxy per site without reconstructing haplotypes, and then sum across sites for a given region, as long as you include both variant and invariant sites in the denominator.  This should give the same answer as would be obtained from reconstructing haplotypes.
+
+best,
+Michael
+
+Michael Nachman
