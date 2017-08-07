@@ -1,5 +1,5 @@
 #
-# detect dxy islands by bootstrapping, but for per-gene dxy
+# detect islands with a permutation based model
 #
 library(tidyverse)
 
@@ -26,15 +26,15 @@ read_tsv('data-gene-dxy/dxy_abs_by_contig.tab') %>%
 ddxy %>%
   ggplot(aes(zf_contig_chrom, zf_contig_end - zf_contig_start)) +
   geom_boxplot()
-  
+
 # contig length vs gene length
 ddxy %>%
   ggplot(aes(contig_length, zf_contig_end - zf_contig_start)) +
   geom_point()
-  
+
 # dxy vs contig length
 # looks like there is a non-linear dependency, dxy gets
-# saturated at contig len ~1k 
+# saturated at contig len ~1k
 ddxy %>%
   ggplot(aes(contig_length, dxy_abs)) +
   geom_point(alpha=0.1) +
@@ -52,14 +52,14 @@ source('bootstrap.R')
 
 # rename columns to work with find_variants
 # and run find_variants
-ddxy %>% 
+ddxy %>%
   dplyr::rename(
     chrom = zf_contig_chrom) %>%
   mutate(
     zf_min = zf_contig_start %>% as.numeric,
     zf_max = zf_contig_end %>% as.numeric,
     zf_pos = zf_min + ((zf_max - zf_min) / 2),
-    dxy_rel = dxy_abs / contig_length ) %>% 
+    dxy_rel = dxy_abs / contig_length ) %>%
   select(
     -zf_contig_start,
     -zf_contig_end) ->
@@ -75,9 +75,9 @@ tdxy <- smoothed_values(ovr_dxy, ddxy$dxy_abs)
 # test plot
 bigchroms <- c("chr1", "chr1A", "chr2", "chr3", "chr4", "chrZ")
 
-tdxy %>% 
+tdxy %>%
   filter(chrom %in% bigchroms) %>%
-  ggplot(aes(zf_pos, smooth)) + 
+  ggplot(aes(zf_pos, smooth)) +
   geom_line(data = tdxy_orig %>% filter(chrom %in% bigchroms), colour = "gray70") +
   geom_line(colour = "green") +
   facet_wrap(~chrom, ncol = 1, strip.position = "left")
@@ -96,15 +96,15 @@ reps <- 1:25000
 
 system.time(
   lt <- sapply(reps, function(x) smoothed_values(ovr_dxy, rand_var(ddxy_az, "dxy_rel"))$smooth))
-#     user   system  elapsed 
-# 12792.97    50.87 12848.47 
+#     user   system  elapsed
+# 12792.97    50.87 12848.47
 
 save(lt, file = 'data-gene-dxy/bootstraps-dxy-gene-rel.RData')
 # load bootstrap data if ever needed again;)
 load('data-gene-dxy/bootstraps-dxy-gene-rel.RData')
 
 # relative, quantiles
-smoothed_values(ovr_dxy, ddxy_fix$dxy_rel) %>% 
+smoothed_values(ovr_dxy, ddxy_fix$dxy_rel) %>%
   mutate(boot_max = apply(lt, 1, max),
          boot_q75 = apply(lt, 1, quantile, probs = 0.75),
          boot_q95 = apply(lt, 1, quantile, probs = 0.95),
@@ -113,15 +113,15 @@ smoothed_values(ovr_dxy, ddxy_fix$dxy_rel) %>%
   tdxy_boot
 
 tdxy_boot %>%
-  write.table('data-gene-dxy/dxy-gene-bootstrap.tsv', 
+  write.table('data-gene-dxy/dxy-gene-bootstrap.tsv',
               sep = "\t",
-              quote = F, 
+              quote = F,
               row.names = F)
 
 read_tsv('data-gene-dxy/dxy-gene-bootstrap.tsv') -> tdxy_boot
 
-tdxy_boot %>% 
-  gather(type, value, smooth, boot_max:boot_q99) %>% 
+tdxy_boot %>%
+  gather(type, value, smooth, boot_max:boot_q99) %>%
   ggplot(aes(value, fill=type)) +
   geom_density(colour=NA, alpha=0.7) +
   ylim(0, 7500) +
@@ -135,22 +135,22 @@ TView <- function(d) {
 }
 
 # plot smooth and boot for bigchroms
-tdxy_boot %>% 
+tdxy_boot %>%
   filter(chrom %in% bigchroms) %>%
   select(chrom, zf_pos, boot = boot_q99, smooth) %>%
   gather(type, value, boot:smooth) %>% TView %>%
   ggplot(aes(zf_pos, value, colour = type)) +
   geom_line() +
-  facet_wrap(~chrom, ncol = 1)  
+  facet_wrap(~chrom, ncol = 1)
 
 # try plotting of the ratio
-tdxy_boot %>% 
+tdxy_boot %>%
   filter(chrom %in% bigchroms) %>%
   select(chrom, zf_pos, boot = boot_q95, smooth) %>%
   ggplot(aes(zf_pos, smooth / boot)) +
   geom_hline(yintercept = 1, alpha = 0.3, colour = "red") +
   geom_line() +
-  facet_wrap(~chrom, ncol = 1, strip.position = "left")  
+  facet_wrap(~chrom, ncol = 1, strip.position = "left")
 ggsave('results/dxy-gene-ratio-95.pdf', width = 8, height = 12)
 
 # smooth / bootstrap ratio with several quantiles
@@ -177,9 +177,9 @@ tdxy_boot %>%
   gather(quant, boot, starts_with("boot")) %>%
   ggplot(aes(zf_pos, boot, colour = quant)) +
   geom_point(size = 0.5, alpha = 0.7) +
-  geom_line(aes(y = smooth, group = chrom), 
+  geom_line(aes(y = smooth, group = chrom),
             data = tdxy_boot %>% filter(chrom %in% bigchroms),
-            size = 2, colour = "gray70", 
+            size = 2, colour = "gray70",
             alpha = 0.7) +
   facet_wrap(~chrom, ncol = 1, strip.position = "left") +
   ylim(0, 0.010)
@@ -221,9 +221,9 @@ oo_genes %>%
   select(chrom, start=start_position, end=end_position) %>%
   mutate(type="oo genes",
          chrom=as.character(chrom)) %>%
-  bind_rows(d_wins_99 %>% mutate(type="win 99")) %>% 
+  bind_rows(d_wins_99 %>% mutate(type="win 99")) %>%
   mutate(id = row_number()) %>%
-  gather(ptype, pos, start, end) %>% 
+  gather(ptype, pos, start, end) %>%
   ggplot(aes(pos, y=type, , colour=type, group=id)) +
   geom_line(size=2) +
   facet_wrap(~chrom, ncol = 1, switch = "y")
