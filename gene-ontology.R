@@ -2,8 +2,6 @@
 # analyze gene ontology in detected islands
 #
 
-library(GenomicRanges)
-
 library(tidyr)
 library(dplyr)
 library(ggplot2)
@@ -11,7 +9,7 @@ library(readr)
 library(gtools)
 
 #### load data ####
-setwd("c:/work/lab/slavici-clanek/")
+# setwd("c:/work/lab/slavici-clanek/")
 
 tfst_boot <- read.delim("data/tfst_boot.tsv")
 tdxy_boot <- read.delim("data/tdxy_boot.tsv")
@@ -26,14 +24,6 @@ t_boot <- bind_rows(tfst_boot, tdxy_boot)
 # calculate the smooth value)
 #
 
-# old version, for reference
-source("interval-tools-gr.R")
-
-# the most interesting should be areas on the intersection of islands
-d_wins_int <- BiocGenerics::intersect(win_to_gr(d_wins_dxy), win_to_gr(d_wins_fst)) %>% gr_to_bed3
-
-
-# non-GRanges version
 source("interval-tools.R")
 
 # need to convert each measure separately

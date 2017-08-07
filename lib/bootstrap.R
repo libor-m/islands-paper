@@ -27,7 +27,7 @@ find_variants <- function(vars, window_size=1e6, stride=1e5) {
       zf_min = min(zf_min),
       zf_max = max(zf_max)) %>% 
     filter(zf_max > window_size) %>%         # pick chromosomes bigger than requested window
-    by_row(
+    purrrlyr::by_row(
       .collate = "rows",
       .to = "start",
       function(x)
@@ -46,7 +46,7 @@ find_variants <- function(vars, window_size=1e6, stride=1e5) {
   # is not)
   vars %>%
     mutate(start = coalesce(zf_pos, zf_min),
-           end = coalesce(zf_pos + 1L, zf_max),
+           end = coalesce(zf_pos + 1, zf_max),
            src_row = row_number()) %>%
     select(chrom, start, end, src_row) %>% 
     setDT ->

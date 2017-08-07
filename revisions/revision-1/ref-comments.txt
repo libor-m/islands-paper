@@ -1,0 +1,247 @@
+https://docs.google.com/document/d/1vHdElaNZHObJ9HAuc5IYWqhfH-pG3Y9siKn6Dqph2gk/edit
+
+24-Jan-2017
+
+Dear Dr. Reifová:
+
+Your manuscript entitled 'Genomic islands of differentiation in two songbird species reveal candidate genes for hybrid female sterility' has now been reviewed and assessed by an Editor. Their comments are included below. While the manuscript cannot be accepted as currently written, we encourage you to consider reworking your paper according to the instructions of the Editor and Reviewers and resubmitting it after significant revision.
+
+If you do choose to resubmit this manuscript, log in to your Scholar One account and select 'Manuscripts with decisions', then create a resubmission of  'Genomic islands of differentiation in two songbird species reveal candidate genes for hybrid female sterility' and follow the on-screen instructions. Do not upload your revised manuscripts as a new submission. Please include a point-by-point response to the reviewer comments, including a detailed list of changes made and a rebuttal to any comments with which you disagree, being as specific as possible in your responses.  In addition, please provide a version of your manuscript with the changes tracked or highlighted.  The title and abstract of your article are very important to increasing its visibility. We encourage you to make your article more discoverable online with the following tips: http://media.wiley.com/assets/7158/18/SEO_For_Authors.pdf
+
+Your original files will be available to you when you upload your revised manuscript. Please delete any outdated files before completing the submission.
+
+If your manuscript could benefit from English language editing, you may wish to consider a service such as Wiley’s at http://wileyeditingservices.com. Please note that while this service will greatly improve the clarity of your paper, it does not guarantee acceptance of your paper by the journal.
+We have a standard resubmission deadline of one year, which can be extended within reason. It is the policy of Molecular Ecology to allow only one reject/encourage decision per manuscript. Resubmitted papers must therefore be improved to the point of acceptability or they will be rejected outright.
+
+Thank you for submitting your research to Molecular Ecology; I hope that you will choose to resubmit your manuscript.
+
+Best Wishes,
+
+Dr Karen Chambers
+Managing Editor, Molecular Ecology
+E-mail: Manager.MolEcol@wiley.com
+
+Editor Comments to Author:
+
+Dear Radka,
+
+First let me apologize for the delay in making a decision on your manuscript.  It was originally handled by Dany Garant.  However, he is on holiday, so I asked that the manuscript be transferred to me to expedite the decision-making process.  In this case it is easy, since all three referees made the same recommendation: Reject, but encourage to re-submit.  Also, there was remarkably unity in their remarks.  All three felt it was an interesting and well-written paper, but they all had concerns about some of the statistical methods employed and possible over-interpretation of the results.  Please address these concerns in a revised manuscript.
+
+Best Wishes, Loren
+
+Prof. Loren Rieseberg
+Chief Editor, Molecular Ecology
+
+Reviewer Comments to Author:
+
+Reviewer: 1
+
+Recommendation: Reject, encourage resubmission
+
+Comments:
+In this manuscript the authors examined genome wide patterns of differentiation between two species of nightingale using sequence variants from transcriptomic data. One of the major selling points of this manuscript was the potential to pin down genes associated with female sterility. I was initially intrigued by this opportunity but observed quite a few pitfalls with this analysis and their interpretation. Combined with some questionable methodological and statistical decisions I would recommend a major revision of this work prior to publication. Please see below for more detailed comments.
+
+1.      The authors spent a good deal of the paper discussing the fact that female nightingales are sterile while males are not, conforming to Haldane’s rule. They argue that no one has attempted to examine the genetic basis of this sterility in a system where females are the heterogametic sex. That might be the case but I believe there are data from flycatchers and Gouldian finches showing that it is sex linked. This literature should be cited.
+
+Throughout the paper the authors state that they found enrichment of four pathways related to female sterility. This is not strictly the case, as these pathways did not pass corrections for multiple testing. The fact that these pathways share genes doesn’t seem like a big deal to me indeed, it explains why they all topped the list. In addition, while the authors state these pathways are related to female sterility they provide no references to support this suggestion (Discussion paragraph starting at line 351) and at least one or two of the pathways seem to have pretty general functions (e.g., calcium signalling pathway). This result needs to be toned down throughout the paper and it needs to be much clearer that this was not statistically significant.
+
+There is no comment in the Discussion about the fact these taxa have actually been diverging for quite some time (on the high end of divergence times based on Price and Bouvier 2002 at 1.8 Mya) and have other important isolating barriers that could play an important role in generating genomic divergence. Indeed, it’s stated they mate assortatively and exhibit character displacement in beak shape. Both these barriers should act before mating and some authors would argue that they are thus more important. This needs to be discussed.
+
+It’s not clear to me why there is no comment about the one pathway that is statistically enriched (aminoacyl-tRNA biosynthesis) in outlier windows nor is it clear why a comparable analysis like a GO analysis was not conducted.
+
+In the end, if the authors wanted to check for an association between differentiation and sterility genes they needed to use a different approach (e.g., genetic mapping connected with islands of differentiation) and it would be useful to identify a set of genes to look for a priori. That would eliminate some of the problems with FDR by limiting the number of analyses conducted.
+
+2.      I think the analyses the authors conduct using MK tests inside and outside islands of differentiation is interesting and novel but I would encourage them to consider how additional factors within and outside windows could have affected MK tests. For example, differences in effective population size, linkage and coalescence times have been shown to reduce power and bias results. I imagine all three of those things differ inside and outside windows.
+
+As with the pathway analyses I also feel the authors are overemphasizing their results here. For example, AIC values for GLMs are quite close and some authors would argue there needs to be a difference of 7 for models to be considered statistically different. In addition, the authors do not find support for differences in MK tests inside and outside islands in one species and some of the patterns they document are completely opposite (e.g., for linkage). There is very little discussion of this fact but these results are touted as another one of their main findings.
+
+3.      I’m concerned some of the methodological decisions the authors made may have introduced a lot of noise into their analyses. For example…
+
+a)      Samples sizes of eight and seven are pretty small (they should generally be well above 10) and this would contribute additional variance to estimates.
+b)      SNP filtering was very minimal. Indeed it seems the authors only applied a quality filter based on phred scores and a low value. There are many additional filters commonly applied including depth and observed heterozygosity.
+c)      The authors state they chose their window size to ensure there would be 1000 windows on the largest chromosome. This is not common. It should be related to how many SNPs are in the window and maybe for comparisons with other studies.
+d)      Coverage does not seem to have been that high – all I can see is that the average coverage per SNP was 35.5. Divided by 8 that would mean that at best the authors would have 4.4x coverage per individual. With some variance in coverage you could have even less for some individuals at each SNP. This should be noted and taken into account when filtering SNPs.
+
+4.      I have a few additional questions about the authors methods including…
+
+a)      How were averages for FST obtained? Weighted or unweighted? Should be unweighted.
+b)      Why were permutations done by chromosome? Just drop the Z and run autosomes together.
+c)      Why was permutation test used for FST and not DXY?
+d)      How many km apart were the individuals sampled? Large distances would inflate within population variation.
+e)      Was the Z chromosome included in MK tests and comparisons of linkage?
+f)      The authors need to back their statements up with statistics. For example, they suggest that islands are “more or less” evenly distributed and there is no enrichment on Z without any statistical evaluation.
+
+5.      Finally, I can’t find a statement about data availability. Raw reads need to be made available along with the “custom perl and shell scripts”.
+
+
+Additional Questions:
+
+Quality of Science: Mostly competent, but suffering from flaws of a technical or analytical nature
+
+Importance of Science: Research primarily descriptive and/or only relevant to the taxon being studied
+
+Quality of Presentation: Ideas and methods mostly clear, but grammar and/or spelling is poor, format does not follow guidelines, and /or there is redundancy between sections
+
+Does this manuscript require significant reduction in length? If 'Yes", please indicate where shortening is required in your specific comments: No
+
+Does the Data Accessibility section list all the datasets needed to recreate the results in the manuscript? If ‘No’, please specify which additional data are needed in your comments to the authors.: No
+
+
+
+Reviewer: 2
+
+Recommendation: Reject, encourage resubmission
+
+Comments:
+In the present study Morkovsky and colleagues investigated the genome-wide distributions of differentiation (Fst) and divergence (Dxy) in two hybridizing sister species of nightingales with female hybrid sterility, in order to find candidate genome regions involved in reproductive isolation. Based on transcriptome data, they find a number of genomic regions with elevated differentiation and above-average divergence. In accordance with the observed female sterility, these regions are enriched for genes involved in female meiosis and oocyte maturation.
+
+This is an interesting manuscript, which I enjoyed reading, and which I think should definitely make a good contribution to Molecular Ecology. However, I have a number of concerns that I would recommend addressing before the manuscript is fit for publication.
+
+
+My major comments are the following:
+
+1) The study leaves me somewhat at a loss concerning the statistical evidence on which the conclusions are based. Entirely subjectively speaking the results make too much sense to be artefacts (but see Pavlidis et al. 2012, Mol Biol Evol 29 (19)). However, the conclusions rely on an approach, which in young systems (such as the nightingales) is expected to have limited power.
+
+The authors identified genomic regions supposedly shielded by gene flow through the expected patterns of Dxy. This measure is expected to be reduced by gene flow, and therefore should be elevated in such regions. However, the maximum amplitude of this reduction of Dxy in the background and thus the elevation in the regions looked for, is expected to be very small. Dxy =  θ(anc) + 2μT, where θ(anc) is ancestral diversity and 2μT the divergence accumulated since the time of divergence. The latter (2μT) constitutes said maximal amplitude, and given the supposedly short divergence time T between the study species is expected to be very small.
+
+As mentioned, I would a priori expect this approach to have low power here, and I think that this problem might be reflected in the way the authors conducted the analyses. Instead of independently determining genomic regions in which Fst and Dxy are significantly elevated, respectively, and then determine candidate regions by the overlap, they do so only for Fst. They then looked within the genomic regions identified this way for ones with above-average Dxy. This leaves me to wonder, how far above average Dxy is in the candidate regions, and whether or not one would not expect a subset of regions with elevated Fst to exhibit elevated Dxy also by chance alone.
+
+Given that the identified candidate regions have annotations as one would expect them for a system with female hybrid sterility, it would perhaps be astonishing that the result is an artefact. However, I wonder whether there would not be means by which the authors could consolidate their conclusions. I see several opportunities for this. The first is outlined above, i.e. Fst and Dxy outliers could be determined independently and candidate regions defined by the overlap. Another way may be to compare the obtained candidate set with randomized subsets of the Fst outliers. I.e. if the enrichment analyses are conducted on all Fst outliers, or on randomized sets of 20 out of the 60 Fst outlier regions, do the same pathways show up? If they do not, this would be evidence in support of the conclusions.
+
+
+2) Some of the analyses are not entirely clear to me, and will need to be better described and/or reconsidered to some extent (please see detailed comments).
+
+
+
+Detailed comments:
+
+- L27-28: Haldanes rule is not a first step in the evolution of reproductive isolation, but may relate to such. Please rephrase.
+
+- L40-42: It is not clear from this sentence, how one can conclude that the candidate regions are situated in genomic regions with low recombination rates based on LD and the mentioned polymorphism/substitution patterns.
+
+- L43: “genetic details” > Here and throughout the manuscript, please rephrase. It is not clear to me what genetic details would be.
+
+- L65: “… no studies have tried to identify the genes underlying female sterility in these groups.” > Please tone down.
+
+- L73: “… population genomics has created new possibilities…” > Rather the technological revolution in sequencing than population genomics.
+
+- L79: It might be good to better discriminate the definitions of these different types of islands, as some merely describe pattern (differentiation islands), while others refer more to function (speciation islands).
+
+- L80-81: Lineage sorting alone cannot result in the strong heterogeneity observed in many species. A reduction of Ne such as through any form of selection in low-recombination regions is required.
+
+- L85-86: “… compare different measures of divergence between populations.” > A short comment on the use of ‘differentiation’ and ‘divergence’. Apart from here, the authors make a rather clear-cut difference between differentiation and divergence, referring to Fst and Dxy, respectively. I think this is the way it should be done, as these are the original definitions of the terms. However, given the general confusion around these terms, the authors may want to clearly state that they refer to Fst with differentiation, and to Dxy with divergence, and then stick to this throughout the manuscript. As a related detail, the authors might want to homogenize the use of differentiation/Fst and divergence/Dxy. Currently they once refer to regions of high differentiation, then to regions of high Fst etc.
+
+- L93-95: Please explicitly but briefly describe the logic of why in combination Fst and Dxy should assist the inference of regions shielded from gene flow.
+
+- L101: Note also, that genome-wide data have to date not found a single backcross in flycatchers (Kawakami et al. 2014, Mol Ecol Res).
+
+- L107-108: The authors repeatedly strongly highlight that studies like theirs have not been conducted in heterogametic female systems yet. I think such an emphasis is not necessary.
+
+- L129: “nonsynonymous polymorphism relative to substitutions” > Here, and elsewhere (abstract, and L330, L394) it is not clear whether the authors refer to all types of substitutions or to nonsynonymous substitutions. This needs to be clarified.
+
+- L156: What is a “large sequencing region”?
+
+- L166-167: It is not clear whether these variants were kept or discarded.
+
+- L170-172: How could such noise affect the analyses and conclusions?
+
+- It does not become entirely clear to me why the authors used sliding instead of stepping windows, and why the step size was chosen such as to yield 1000 windows on the longest chromosome. Because sliding windows introduce an additional layer of non-independence of values, which may e.g. impact outlier detection, I would rather suggest to use stepping windows, unless the authors can better justify their approach.
+
+- The approach used to identify islands of elevated Fst is not entirely clear to me. If I understand correctly, the authors first shuffled variants across chromosomes, albeit keeping the SNP locations intact. This approach would then infer chromosome regions with a high proportion of high-differentiation SNPs as outliers. They then estimated averages for each window, and “for each position of the sliding window picked the highest value from all the permutations as the bootstrap value”. First, I do not understand the last part. To my understanding, this kind of resampling procedure serves to establish a distribution of Fst values as expected if high-differentiation SNPs were randomly distributed across the chromosome. From this, a cut-off value can then be determined e.g. as the upper 5% quantile, above which a window is inferred as an outlier. I understand that the authors may have chosen a different approach, but in this case it would have to be described much clearer, as the way it is presented now, I do not understand what they did.
+
+- I have two more comments relating to the estimation of multilocus Fst values and to the outlier detection procedure. First, multilocus Fst values should ideally be estimated as ratios of means rather than means of ratios (see e.g. Bhatia et al. 2016 Genome Res). Second, the authors chose to perform the outlier detection per chromosome. It is clear that the Z chromosome has to be analysed separately. However, unless background differentiation correlates strongly with chromosome size, I would recommend to analyse all autosomes jointly. The reason for this is that in many species genomic islands of elevated differentiation are of the same size irrespective of chromosome size. If in this case outlier detection is performed chromosome-wise, outlier detection is bound to be more stringent in small chromosomes, because the islands contribute more to average differentiation there relative to large chromosomes.
+
+- L193-200: It is unclear to me how Dxy was estimated. I do not understand why the authors aim at obtaining haplotypes, as the estimation of Dxy merely requires allele frequencies and the number of valid sites per window. It therefore also does not make much sense to use a subsampling procedure (which by the way does not provide haplotypes). Because the latter discards valuable information, I would urge the authors to re-estimate Dxy using full data. Furthermore, I am not sure that dividing the sum of average pairwise differences by the total length of the contig is correct. The number of sites that enter the denominator should contain the variable and invariable sites, both of which have been filtered using the same criteria. I.e. also invariable sites need to be filtered. Otherwise the Dxy values are systematically underestimated, and variation in data quality among windows can strongly bias Dxy values. In the light of my first major comment, obtaining the best possible Dxy estimates may be crucial for the present study.
+
+- It is unclear to me which genes were used for the background in the enrichment analyses. Were all zebra finch and flycatcher genes used, or only the ones contained in the transcriptome data? Please provide clear information on this. I have admittedly not much experience with this type of analyses, but reckon that only ones represented in the nightingale data should be used.
+
+- L216: Differentiation islands, or differentiation islands with above-average Dxy?
+
+- L225: “Lineage-specific substitutions were defined…” > Specific to which lineage? To the one leading to the nightingale ancestor, or specific to each of the nightingale species?
+
+- How much information in addition to Fst does LD provide? How far are these parameters bound to correlate due to their dependence on allele frequencies?
+
+- Figure 1: I have several recommendations for this figure. First, I find the figure difficult to read with the vertical orientation of the chromosomes. I would strongly recommend to display them horizontally, such as is usually done. Furthermore, I would like to see Fst, and not the Fst/bootstrap ratio. Please change the figure accordingly. Finally, I would strongly encourage the authors to also display Dxy in parallel to Fst. The entire study relies so heavily on both of these measures that I think it indispensable to show Dxy.
+
+- L263-264: Please provide the estimated values.
+
+- L271: “The average absolute divergence was slightly lower within differentiation islands…” > This strongly hints towards differentiation islands being situated in genomic regions with low recombination rates and subject to linked selection. I really would like to see how Dxy compares to Fst!
+
+- L305 and L308: How many of these polymorphisms and fixed differences, respectively, were shared among the two species?
+
+- L301-338: There is a lot of repetition of the methods that in my opinion could be reduced to some extent.
+
+- L332: The step from polymorphism patterns to low recombination is a bit abrupt in my opinion. Please explain in more detail the relationship also with Ne, to make this more accessible to the reader.
+
+- L360-361: Do these genes actually exhibit any special footprints of selection, e.g. in the form of non-synonymous substitutions between the species, or in other statistics?
+
+- L386-391: I really like the frank discussion of the limitations in interpreting differentiation patterns observed for the Z chromosome!
+
+- L711: “wrote paper” > wrote THE paper
+
+- I wonder whether Fig. 2 should not rather go to the Supplement. Here the authors refer to “islands of high divergence”. Are these the islands of high Fst? Please be careful with the terminology, as it easily leads to confusion. Furthermore, I cannot make out violet rectangles, and the two other pathways are not well visible.
+
+- L749: Fixed what?
+
+- Supplemental Figure 1: What do the colors indicate? Please delete upper diagonal of the matrix.
+
+
+
+Additional Questions:
+
+Quality of Science: Mostly competent, but suffering from flaws of a technical or analytical nature
+
+Importance of Science: Research addresses a consequential question in ecology, evolution, behaviour, or conservation
+
+Quality of Presentation: Ideas and methods mostly clear, but grammar and/or spelling is poor, format does not follow guidelines, and /or there is redundancy between sections
+
+Does this manuscript require significant reduction in length? If 'Yes", please indicate where shortening is required in your specific comments: No
+
+Does the Data Accessibility section list all the datasets needed to recreate the results in the manuscript? If ‘No’, please specify which additional data are needed in your comments to the authors.: Yes
+
+
+
+
+Reviewer: 3
+
+Recommendation: Reject, encourage resubmission
+
+Comments:
+The authors present a genomic analysis of two nightingale species that hybridize in Europe. Understanding the genes involved in generating reproductive barriers between closely related species is an active and important area of research. This study, in particular, focuses on identifying possible ‘speciation genes’ that are involved in female sterility, which has implications for our understanding of Haldane’s rule. The authors use transcriptome data for the two species to quantify regions of the genome that are divergent between the taxa. Using a variety of metrics, they then ask whether those regions of the genome that are differentiated have an intuitive connection with female sterility. They further test this hypothesis by asking whether there are differences in the molecular signatures of selection for genes inside and out of these divergence peaks.
+
+I found the paper was well written and fairly easy to read (particularly the introduction). I think there are some interesting patterns here, but I do have some important concerns:
+- I can’t say that I have come across papers that have used transcriptome data in this kind of genome scan type analysis. This is interesting, in that it focuses the analysis on genomic features that are likely to have a relevant functional consequence and possibly involved in reproductive barriers. On the other hand, some of these analyses seemed additionally convoluted given the focus on strictly coding regions. For instance, are there not large swaths of chromosomes that you have little-to-no sequencing data? How do you deal with this in your window analysis? While it is true that other kinds of reduced representation sequencing (i.e. RADseq) samples only a very small portion of the whole genome, presumably enzyme cut sites from RADseq are much more randomly distributed than this kind of transcriptome data? In previous studies it is much more common to do these kinds of sliding windows with whole genome re-sequencing data, therefore the kind of window analysis makes more intuitive sense.
+
+- Additionally, it wasn’t entirely clear to me how you calculated Dxy using this data both inside and outside FST divergence peaks and I think you need some more information here. Also, taking this kind of large 1MB window approach, aren’t you losing a lot of your signal by focusing on these very large regions? The other approach that I was thinking was to do a more gene-centric analysis, calculating these statistics per gene (I have seen the # of fixed differences in a given gene or genes in a pathway used successfully). I think this is less conservative then the analysis you show, given that it doesn’t take into account linkage and physical arrangement of different genes, but it still may be worth considering (particularly because the results you present for enriched genes are not the strongest - see below).
+
+- On a similar note, Dxy has become a widely advocated summary statistic, particularly following Cruickshank and Hanh 2014. I see no problem in calculating Dxy and highlighting ‘Fst + Dxy’ islands. At the same time, I haven’t been entirely convinced that Dxy is the most sensitive metric to pick out small regions of the genome that may or may not be influenced by gene flow (in fact, it’s not clear that any study to date has shown very strong Dxy peaks, and even in this analysis Dxy is lower in the FST peaks). So, rather, I would have liked to have seen the gene enrichment analysis using just FST peaks and, in addition, the gene enrichment analysis run with the subset of high FST peaks that also showed elevated Dxy.
+
+- I think you have been fair with your gene enrichment analysis. However, it is difficult to ignore the fact that much of your discussion focuses on the four pathways that appear enriched for certain gene categories, but they are not statistically significant following the false discovery rate correction. I’m not sure how much weight to put on the FDR, but given that the goal with this test is to correct for false positives, are you not worried that this might be more of an issue than you present in the paper?
+
+
+line 140 - given that collection conditions will influence later RNA expression, do you need to detail time of day, whether the birds were handled similarly? I’m not sure exactly what is needed here, but this seems important.
+line 166-167 - This is unclear
+line 175 and 255 - little bit on the low side - this is genotype quality, correct? Given that your average coverage is around 35, why go so low? Most reduced-representation studies I’ve read use a cutoff of about 20-30.
+line 179 - Unless I am misunderstanding how you obtained and analyses your transcriptome data, how do you have reads mapping to introns?
+line 195 - Given that you are only looking at coding regions, how large are these contigs?
+line 199 - Need more detail on how the ‘inside - outside’ FST island was calculated. Also, I think you need to include more information about how you decided whether an island had ‘higher Dxy than the genomic average’. Was this analysis also permuted by chromosome?
+line 215 - could you not just do a test to see if those genes that show evidence of selection have similar functions?
+Line 316 - Does it not seem odd, given how you setup your tests, that genes outside the islands showed evidence of selection?
+line 351 - is it worth testing whether those genes highlighted by your analysis that fall in this pathway show evidence of selection? Given the windows are so large, you might be losing much of the signal by just doing this inside-outside window comparison.
+
+Figure 2 - These pathway diagrams are not very visually appealing, are quite cumbersome, and aren't very useful. If you can come up with a more useful way of displaying this data that would be preferable.
+
+Data accessibility - the authors link to data that was uploaded in 2015 to dryad. Presumably these are the raw reads? I haven't downloaded the file, but presumably these have not been de-multiplexed? Is there individual information that should accompany the data?
+
+
+Additional Questions:
+
+Quality of Science: Mostly competent, but suffering from flaws of a technical or analytical nature
+
+Importance of Science: Research addresses a consequential question in ecology, evolution, behaviour, or conservation
+
+Quality of Presentation: Writing is clear, methods and data analyses are transparent, ideas make sense, proper grammar and spelling is employed, redundancy is avoided
+
+Does this manuscript require significant reduction in length? If 'Yes", please indicate where shortening is required in your specific comments: No
+
+Does the Data Accessibility section list all the datasets needed to recreate the results in the manuscript? If ‘No’, please specify which additional data are needed in your comments to the authors.: No
