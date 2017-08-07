@@ -28,7 +28,7 @@ dvar %>%
 bigchroms <- c("chr1", "chr1A", "chr2", "chr3", "chr4", "chrZ")
 
 #### load the bootstrap workers ####
-source("bootstrap.R")
+source("lib/bootstrap.R")
 
 # a few checks
 

@@ -10,7 +10,7 @@ read_delim('data/d_wins.tsv', delim=" ") ->
   dwins
 
 # dxy in lp coordinates
-read_tsv('data/dxy.tsv', 
+read_tsv('data/dxy.tsv',
          col_names=c("chrom", "pos", "ndiff", "ncomp", "dxy")) %>%
   filter(!is.na(ndiff)) ->
   ddxy
@@ -18,7 +18,7 @@ read_tsv('data/dxy.tsv',
 # read all other info on the variants
 read_tsv("data/variant-table.tsv") -> dvar
 
-# join on chrom, pos 
+# join on chrom, pos
 # filter on some minimal variant quality
 # and number of comparisons when calculating dxy
 # (reflect number of sampled individuals for given site)
@@ -34,10 +34,10 @@ dvar %>%
 
 #### separate the variants according to in/out of Fst island ####
 
-source('interval-tools.R')
+source('lib/interval-tools.R')
 
 # convert `zf_pos` - position in zebra finch reference to intervals
-daf_dxy %>% 
+daf_dxy %>%
   mutate(start = zf_pos, end = zf_pos) ->
   ddxy_int
 
@@ -53,7 +53,7 @@ setkey(dtwin, chrom, start, end)
 # pick inside variants
 dt.intersect(dtxy, dtwin) ->  d_in_islands
 
-# create a fake genome 
+# create a fake genome
 # with chromosomes ending after the last variant
 dvar %>%
   group_by(chrom) %>%
@@ -86,13 +86,13 @@ bind_rows(d_in_islands %>% select(chrom, pos = start, dxy) %>% mutate(group="IN"
   dxy_islands
 
 dxy_islands %>%
-  ggplot(aes(group, dxy, fill=group)) + 
+  ggplot(aes(group, dxy, fill=group)) +
   geom_boxplot()
 ggsave('results/dxy-inout-boxplot.pdf', width=9, height=12)
 ggsave('results/dxy-inout-boxplot.png', width=9, height=12, dpi=72)
 
 dxy_islands %>%
-  ggplot(aes(dxy, fill=group)) + 
+  ggplot(aes(dxy, fill=group)) +
   geom_density(colour = NA, alpha = 0.7)
 ggsave('results/dxy-inout-density.pdf', width=12, height=9)
 ggsave('results/dxy-inout-density.png', width=12, height=9, dpi=72)
@@ -104,17 +104,17 @@ t.test(d_in_islands$dxy, d_out_islands$dxy)
 # 95 percent confidence interval:
 #   0.01284956 0.03143910
 # sample estimates:
-#   mean of x mean of y 
+#   mean of x mean of y
 # 0.2995938 0.2774495
 
 
 # compare the overlaps of the Fst and Dxy windows
 # simply by taking intersection length / union length
-bind_rows(dwins %>% 
-            filter(measure != "both") %>% 
-            reduce_intervals %>% 
+bind_rows(dwins %>%
+            filter(measure != "both") %>%
+            reduce_intervals %>%
             mutate(measure = "union"),
-          dwins %>% 
+          dwins %>%
             filter(measure == "both") %>%
             mutate(measure = "intersection")) %>%
   group_by(measure) %>%

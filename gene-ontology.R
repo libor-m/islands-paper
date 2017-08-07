@@ -19,12 +19,12 @@ t_boot <- bind_rows(tfst_boot, tdxy_boot)
 #### define islands ####
 
 #
-# island is defined as an 1M window around any variant, that 
-# exceeds the bootstrap threshold (the window size is the same used to 
+# island is defined as an 1M window around any variant, that
+# exceeds the bootstrap threshold (the window size is the same used to
 # calculate the smooth value)
 #
 
-source("interval-tools.R")
+source("lib/interval-tools.R")
 
 # need to convert each measure separately
 # because the windows are merged together and there is no 'measure' grouping
@@ -55,7 +55,7 @@ d_wins %>% write.table("data/d_wins.tsv", quote=F, row.names=F, sep="\t")
 read_delim('data/d_wins.tsv', delim = " ") -> d_wins
 
 # visual check if the intersection is ok
-d_wins %>% 
+d_wins %>%
   filter(chrom %in% bigchroms) %>%
   gather(type, pos, start, end) %>%
   ggplot(aes(pos, colour=measure)) +
@@ -66,7 +66,7 @@ ggsave("results/window-overlaps.pdf", width=297, height=210, units="mm")
 # the 2M window works a bit better for the intersection
 
 # will rather use external tool for the intersection with all zf annotations
-# get the reduced bed3 list 
+# get the reduced bed3 list
 d_wins_fst %>% write.table(file='data/islands-fst.bed', row.names=F, col.names=F, sep="\t", quote=F, eol="\n")
 d_wins_dxy %>% write.table(file='data/islands-dxy.bed', row.names=F, col.names=F, sep="\t", quote=F, eol="\n")
 d_wins_int %>% write.table(file='data/islands-int.bed', row.names=F, col.names=F, sep="\t", quote=F, eol="\n")
@@ -75,15 +75,15 @@ d_wins_int %>% write.table(file='data/islands-int.bed', row.names=F, col.names=F
 #### get genes in islands ####
 #
 # pull chicken homologs from biomart for those dbs, that don't know zebra finch
-# all GO terms in finch are IEA anyways 
+# all GO terms in finch are IEA anyways
 # (http://geneontology.org/page/automatically-assigned-evidence-codes)
-source(biomaRt)
+source("lib/mart.R")
 
-# convert wins to regions string 
+# convert wins to regions string
 # and pull the data
-d_wins %>% 
+d_wins %>%
   filter (measure == "both") %>%
-  encode_wins %>% 
+  encode_wins %>%
   genes_from_regions ->
   int_genes
 
@@ -109,9 +109,9 @@ int_genes %>%
 # choose more here:
 # https://www.bioconductor.org/packages/release/BiocViews.html#___GeneSetEnrichment
 # http://nar.oxfordjournals.org/content/37/1/1/T2.expansion.html
-# 
-# AMIGO rte http://amigo.geneontology.org/rte 
-# - just redirects to PANTHER, 
+#
+# AMIGO rte http://amigo.geneontology.org/rte
+# - just redirects to PANTHER,
 # - the redirect fails with longer lists
 # PANTHER - http://pantherdb.org/tools/compareToRefList.jsp
 # - does not have zebra finch
@@ -129,15 +129,15 @@ int_genes %>%
 
 
 # PANTHER on ggal, "Panther GO-Slim BP" without Bonferroni
-# shows overrepresentation of few classes, 
+# shows overrepresentation of few classes,
 # RNA processing, sulfur compounds
 # and underrepresentation of developmental and 'housekeeping'
 # (cell adhesion) stuff
-# see panther-islands-int-2M.ggal.txt 
+# see panther-islands-int-2M.ggal.txt
 
 # g:Profiler accepts genomic ranges directly
 d_wins_int %>%
-  tidyr::extract(chrom, c("chrom"), regex="chr([[:alnum:]]+)") %>% 
+  tidyr::extract(chrom, c("chrom"), regex="chr([[:alnum:]]+)") %>%
   mutate(region=paste(chrom, start, end, sep=":")) %>%
   dplyr::select(region) ->
   int_regions
@@ -146,7 +146,7 @@ int_regions %>% write.table("data/islands-int.regions", col.names=F, row.names=F
 
 # and g:Profliler has a convenient R interface
 library(gProfileR)
-int_regions %>% 
+int_regions %>%
   gprofiler(
     organism="tguttata",
     region_query=T,
@@ -159,14 +159,14 @@ int_regions %>%
 gprof_test %>% arrange(p.value) %>% View
 
 # save it for funneling to google doc (over spreadsheets;):
-gprof_test %>% 
-  arrange(p.value) %>% 
-  dplyr::select(term.name, 
-                p.value, 
-                significant, 
-                term.size, 
-                overlap.size, 
-                recall, 
+gprof_test %>%
+  arrange(p.value) %>%
+  dplyr::select(term.name,
+                p.value,
+                significant,
+                term.size,
+                overlap.size,
+                recall,
                 precision) %>%
   write.table("data/gprof-int-2M.txt", row.names=F, sep="\t")
 
@@ -183,14 +183,14 @@ david <- read.delim("data/DAVID_ens_thresh1_E0.2.txt")
 
 #
 # giving up, will write the code myself
-# 
-source('gene-set-enrichment.R')
+#
+source('lib/gene-set-enrichment.R')
 
 kegg <- kegg_get_data('tgu', 'ensembl-tgu')
 
 # here the question is what to use as a background
 # - the whole universe: uni_go: uni_go$ensembl_gene_id
-#   this gives some interesting results, but without statistical 
+#   this gives some interesting results, but without statistical
 #   significance after FDR correction ..
 # - all genes annotated with a pathway: kegg$pathway_genid$genid
 #   this way all the groups seem severely underrepresented
@@ -217,7 +217,7 @@ kegg_enrich_universe %>%
 
 # extract the genes from the serialized form
 # into one ene per row
-# do() is a bit difficult with column naming, 
+# do() is a bit difficult with column naming,
 # have to use tiny trick with `colanmes<-`
 kegg_enrich_universe %>%
   select(description, qin.list) %>%
@@ -227,15 +227,15 @@ kegg_enrich_universe %>%
   `colnames<-`(c("description", "ensg")) ->
   oo_genes
 
-# take the unique genes, and pull some more information on 
+# take the unique genes, and pull some more information on
 # them from biomart
 getBM(c("ensembl_gene_id",
         "chromosome_name",
         "start_position",
         "end_position",
-        "go_id", 
-        "go_linkage_type", 
-        "name_1006"), 
+        "go_id",
+        "go_linkage_type",
+        "name_1006"),
       filters = c("ensembl_gene_id"),
       values = oo_genes$ensg %>% unique,
       mart = mart) ->
@@ -249,8 +249,8 @@ getBM(c("ensembl_gene_id",
         "start_position",
         "end_position",
         "hgnc_symbol",
-        "wikigene_name", 
-        "wikigene_description"), 
+        "wikigene_name",
+        "wikigene_description"),
       filters = c("ensembl_gene_id"),
       values = oo_genes$ensg %>% unique,
       mart = mart) ->
@@ -258,24 +258,24 @@ getBM(c("ensembl_gene_id",
 
 # output table for the paper
 oo_mart %>%
-  rename(chrom=chromosome_name) %>% 
-  sortchrom %>% 
-  arrange(chrom, start_position) %>% 
+  rename(chrom=chromosome_name) %>%
+  sortchrom %>%
+  arrange(chrom, start_position) %>%
   write.table("results/oo-genes-mart-wiki.txt", sep="\t", row.names=F, quote=F)
 
 # check chromosome co-localization
-oo_mart %>% 
+oo_mart %>%
   group_by(chromosome_name) %>%
   summarise(ngenes=ensembl_gene_id %>% unique %>% length) %>%
   arrange(desc(ngenes))
-  
+
 #### pull genes from bioMart based on Ensembl id ####
 
 ensg <- grep("^ENS", igenes$name)
 ig_ens <- igenes[ensg]
 
 # mine mart
-ig_go <- getBM(c("ensembl_gene_id", "ensembl_transcript_id", "go_id", "go_linkage_type", "name_1006"), 
+ig_go <- getBM(c("ensembl_gene_id", "ensembl_transcript_id", "go_id", "go_linkage_type", "name_1006"),
       c("ensembl_transcript_id"), ig_ens$name, mart)
 
 # check how many annotated genes
@@ -290,12 +290,12 @@ write.table(ig_go, file='data/ig_go.tsv', row.names=F, sep="\t", quote=F)
 #### get zebra finch gene universe ####
 
 # download zebra finch 'gene universe'
-uni_go <- getBM(c("ensembl_gene_id", 
-                  "ensembl_transcript_id", 
-                  "chromosome_name", 
-                  "start_position", 
-                  "end_position", 
-                  "go_id", 
+uni_go <- getBM(c("ensembl_gene_id",
+                  "ensembl_transcript_id",
+                  "chromosome_name",
+                  "start_position",
+                  "end_position",
+                  "go_id",
                   "go_linkage_type"), "", "", mart)
 
 write.table(uni_go, file='data/uni_go.tsv', row.names=F, sep="\t", quote=F)
@@ -325,7 +325,7 @@ goterms[whmf] %>% View
 # other GOs to check in GO tree, find appropriate top GO and visualize:
 # female genitalia morphogenesis (chrZ hits)
 # hits for meiosis, spermatogenesis, male, femala
-# 
+#
 # GO:0007140 male meiosis
 # GO:0007143 female meiotic division
 # GO:0030237 female sex determination
@@ -345,7 +345,7 @@ GOsubtree <- function(goid) {
 # add the parent term to the filter
 fgg <- GOsubtree("GO:0007292")
 fgg_pos <- ig_go %>%
-  filter(go_id %in% fgg) %>% 
+  filter(go_id %in% fgg) %>%
   left_join(ig_ens %>% {data.frame(ensembl_transcript_id=.$name, chrom=seqnames(.), zf_pos=start(.) + (end(.) - start(.)) / 2 )})
 
 # annotate more types of candidate genes
@@ -390,22 +390,22 @@ cand_goids$go_id %>% unique %>% length
 # transform GRanges to data frame
 # (only chrom, pos, gene name)
 gr2df <- function(gr) gr %>% {data.frame(
-  ensembl_transcript_id = .$name, 
-  chrom = seqnames(.), 
+  ensembl_transcript_id = .$name,
+  chrom = seqnames(.),
   zf_pos=(start(.) + end(.)) / 2)}
 
 # pick the genes that fall into the candidate GO subtrees
-# this is good to check if there is any potential reason for 
+# this is good to check if there is any potential reason for
 # the high fst
-ig_cands <- gr2df(ig_ens) %>% 
-  inner_join(ig_go %>% filter(go_id %in% bpids)) %>% 
+ig_cands <- gr2df(ig_ens) %>%
+  inner_join(ig_go %>% filter(go_id %in% bpids)) %>%
   inner_join(cand_goids)
 
 #TODO: pick candidates from universe instead of islands
 # (download also coordinates from mart to uni_go)
 # this is good for what? chromosome enrichment maybe
-ig_cands <- uni_go %>% 
-  mutate(chrom = paste0("chr", chromosome_name), 
+ig_cands <- uni_go %>%
+  mutate(chrom = paste0("chr", chromosome_name),
          zf_pos = (start_position + end_position) / 2) %>%
   inner_join(cand_goids)
 
@@ -415,9 +415,9 @@ ig_cands <- uni_go %>%
 # - candidate genes for male and female
 tm %>%
   filter(chrom %in% bigchroms) %>%
-  ggplot(aes(zf_pos)) + 
+  ggplot(aes(zf_pos)) +
   geom_line(aes(y=fst_boot), colour="yellow") +
-  geom_line(aes(y=fst_smooth), colour="blue") +  
+  geom_line(aes(y=fst_smooth), colour="blue") +
   geom_point(y=.2, colour="blue", shape=15, size=2, data=tm %>% filter(fst_smooth > fst_boot, chrom %in% bigchroms)) +
   geom_point(aes(y=ifelse(group == "male", -.1, -.05), shape=group), data=ig_cands %>% filter(chrom %in% bigchroms), size=3, colour="red") +
   scale_shape_manual(values=c(1, 2)) +
@@ -432,7 +432,7 @@ ggsave('results/fst_islands.pdf', width=20, height=16)
 # find genes for each island and join the fst values
 ig_tree <- GIntervalTree(ig_ens)
 gra <- islands %>% {GRanges(seqnames=.$chrom, ranges=ir, fst_smooth=.$fst_smooth, fst_boot=.$fst_boot)}
-bpids <- Ontology(GOTERM) %>% 
+bpids <- Ontology(GOTERM) %>%
   {data.frame(term=names(.), onto=.)} %>%
   filter(onto == "BP") %>%
   .$term %>%
@@ -440,7 +440,7 @@ bpids <- Ontology(GOTERM) %>%
 
 igenes_ann <- findOverlaps(gra, ig_tree) %>%
   as.data.frame %>%
-  mutate(chrom = as.factor(seqnames(ig_tree)[subjectHits]), 
+  mutate(chrom = as.factor(seqnames(ig_tree)[subjectHits]),
          zf_pos = ig_tree %>% start %>% {.[subjectHits]},
          ensembl_transcript_id = ig_tree$name[subjectHits],
          fst_smooth = gra$fst_smooth[queryHits],
@@ -449,7 +449,7 @@ igenes_ann <- findOverlaps(gra, ig_tree) %>%
   left_join(ig_go %>% filter(go_id %in% bpids)) %>%
   filter(!is.na(go_id)) %>%
   unique %>%
-  arrange(dplyr::desc(fst_diff))   
+  arrange(dplyr::desc(fst_diff))
 
 # save top 1k gene entries in the most differentiated areas
 igenes_ann %>% head(1000) %>% write.table(file="data/fst_diff-top-1k.tsv", sep="\t", quote=F, row.names=F)
@@ -482,7 +482,7 @@ colnames(blat)[c(10, 14, 16, 17)] <- c("probe", "chrom", "zf_start", "zf_end")
 # annotate by the original module annotation
 probes <- read.delim("song/song-modules.tsv", header=F) %>%
   dplyr::rename(module=V6) %>%
-  dplyr::select(module) %>% 
+  dplyr::select(module) %>%
   mutate(probe=paste0("seq", 1:length(module)))
 
 blat <- read.delim('song/probe-blat-full.psl', skip=5, header=F) %>%
@@ -495,16 +495,16 @@ irblat <- blat %>% {IRanges(start=.$zf_start, end=.$zf_end)}
 grblat <- blat %>% {GRanges(seqnames=.$chrom, ranges=irblat)}
 igblat <- findOverlaps(gra, grblat) %>%
   as.data.frame %>%
-  mutate(chrom = as.factor(seqnames(grblat)[subjectHits]), 
+  mutate(chrom = as.factor(seqnames(grblat)[subjectHits]),
          zf_pos = blat %>% {.$zf_pos[subjectHits]},
          module = blat %>% {.$module[subjectHits]})
-  
+
 # TODO: should split the plot into premade parts not to copy the code around
 tm %>%
   filter(chrom %in% bigchroms) %>%
-  ggplot(aes(zf_pos)) + 
+  ggplot(aes(zf_pos)) +
   geom_line(aes(y=fst_boot), colour="yellow") +
-  geom_line(aes(y=fst_smooth), colour="blue") +  
+  geom_line(aes(y=fst_smooth), colour="blue") +
   geom_point(y=.2, colour="blue", shape=15, size=2, data=tm %>% filter(fst_smooth > fst_boot, chrom %in% bigchroms)) +
   geom_point(aes(shape=module), data=blat %>% filter(chrom %in% bigchroms), size=3, colour="red", y=-.1) +
   scale_shape_manual(values=c(1, 2, 3)) +
@@ -520,15 +520,15 @@ ggplot(blat, aes(V1)) + geom_histogram()
 
 #### per gene dxy ####
 
-source('gene-set-enrichment.R')
+source('lib/gene-set-enrichment.R')
 
 # read fst windows
 read_delim('data/d_wins.tsv', delim = " ") %>%
   filter(measure == "Fst") -> d_wins
 
 read_tsv('data-gene-dxy/contigs_dxy_avg_to_fst_isl.txt') %>%
-  rename(chrom = zf_contig_chrom, 
-         start = zf_contig_start, 
+  rename(chrom = zf_contig_chrom,
+         start = zf_contig_start,
          end = zf_contig_end) %>%
   mutate(dxy_rel = dxy_abs / contig_length) ->
   ddxy
@@ -581,7 +581,7 @@ sortchrom_r <- function(df) df %>% mutate(chrom=chrom %>% factor(levels=chrom %>
 bigchroms <- c("chr1", "chr1A", "chr2", "chr3", "chr4", "chrZ")
 
 read_tsv("data/tfst_boot.tsv") %>%
-  select(chrom, zf_pos, Fst=smooth, Bootstrap=boot) -> 
+  select(chrom, zf_pos, Fst=smooth, Bootstrap=boot) ->
   tfst_boot
 
 ddxy$dxy_rel %>% mean -> dxy_genomic_mean
@@ -598,9 +598,9 @@ tfst_boot %>%
   ggplot(aes(zf_pos)) +
   geom_line(aes(y = Fst / Bootstrap), colour = "#999999") +
   geom_hline(yintercept = 1, colour="firebrick", alpha=0.6) +
-  geom_line(aes(group=id, colour=dxy_rel > dxy_genomic_mean), 
+  geom_line(aes(group=id, colour=dxy_rel > dxy_genomic_mean),
             y = -.1,
-            size = 3, 
+            size = 3,
             data = dovr_long %>% filter(chrom %in% bigchroms)) +
   facet_wrap(~chrom, ncol = 1, switch = "y")
 
@@ -609,24 +609,24 @@ tfst_boot %>%
   filter(!grepl("random", chrom)) %>%
   sortchrom %>%
   ggplot(aes(zf_pos)) +
-  geom_line(aes(y = Fst / Bootstrap), 
+  geom_line(aes(y = Fst / Bootstrap),
             colour = "#999999") +
-  geom_hline(yintercept = 1, 
-             colour = "firebrick", 
+  geom_hline(yintercept = 1,
+             colour = "firebrick",
              alpha = 0.6) +
-  geom_line(aes(group = id, 
-                colour = dxy_rel > dxy_genomic_mean), 
+  geom_line(aes(group = id,
+                colour = dxy_rel > dxy_genomic_mean),
             y = -.1,
-            size = 3, 
-            data = dovr_long %>% 
-                     filter(!grepl("random", chrom)) %>% 
+            size = 3,
+            data = dovr_long %>%
+                     filter(!grepl("random", chrom)) %>%
                      sortchrom) +
-  facet_wrap(~chrom, 
-             ncol = 1, 
+  facet_wrap(~chrom,
+             ncol = 1,
              switch = "y") +
   xlim(0, 3e8) +
   scale_colour_manual(values = c("FALSE" = "#aaaaaa",
-                                 "TRUE" = "firebrick"), 
+                                 "TRUE" = "firebrick"),
                       guide = "none")
 
 # 31 panels, we want ~3 cm per panel, that is 31 * 30
@@ -634,7 +634,7 @@ ggsave('results/figure1-src.pdf', width = 290, height = 900, unit = "mm")
 
 dovr %>%
   group_by(id) %>%
-  summarise(n=n()) %>% 
+  summarise(n=n()) %>%
   dim
 
 dovr %>% write.table("data-gene-dxy/contigs-in-fst-wins.tsv", sep = "\t", quote=F, row.names=F)
@@ -670,11 +670,11 @@ d_join %>%
   mean_genome_dxy
 
 # get the genes in selected windows
-source("mart.R")
+source("lib/mart.R")
 
 dovrmean %>%
   filter (dxy_rel_mean > mean_genome_dxy) %>%
-  encode_wins %>% 
+  encode_wins %>%
   genes_from_regions ->
   int_genes
 
@@ -694,7 +694,7 @@ kegg$pathway_genid %>% write.table("data-annot/pathway_ensgene.tsv", quote=F, ro
 
 # here the question is what to use as a background
 # - the whole universe: uni_go: uni_go$ensembl_gene_id
-#   this gives some interesting results, but without statistical 
+#   this gives some interesting results, but without statistical
 #   significance after FDR correction ..
 # - all genes annotated with a pathway: kegg$pathway_genid$genid
 #   this way all the groups seem severely underrepresented
@@ -716,7 +716,7 @@ test_enrichment(unique(int_genes$ensembl_gene_id),
 
 # test enrichment for fst islands only
 d_wins %>%
-  encode_wins %>% 
+  encode_wins %>%
   genes_from_regions ->
   int_genes
 
