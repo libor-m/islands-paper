@@ -1,5 +1,8 @@
 #
 # detect islands with a permutation based model
+# - it's possible to use the per gene dxy, because 
+#   contigs are smaller than the windows, thus can be aggregated
+#   in the same way as single point mutations
 #
 library(tidyverse)
 
@@ -37,10 +40,15 @@ ddxy %>%
 # saturated at contig len ~1k
 ddxy %>%
   ggplot(aes(contig_length, dxy_abs)) +
-  geom_point(alpha=0.1) +
+  geom_point(alpha = 0.1) +
   scale_y_log10() +
   xlim(0, 2500)
-ggsave('results/dxy-contig-length.png', width=8, height=10, dpi=72)
+ggsave(
+  'results/dxy-contig-length.png',
+  width = 8,
+  height = 10,
+  dpi = 72
+)
 
 ddxy %>%
   ggplot(aes(contig_length)) +
@@ -52,6 +60,11 @@ source('bootstrap.R')
 
 # rename columns to work with find_variants
 # and run find_variants
+# `dxy_rel` should be calculated by dividing with 
+#   the amount of bases with the same filtering criteria as the SNPs,
+#   but the ratio of filtered bases to all bases will be ~constant, 
+#   that is `dxy_rel` will differ only by a constant
+#
 ddxy %>%
   dplyr::rename(
     chrom = zf_contig_chrom) %>%
@@ -114,6 +127,11 @@ smoothed_values(ovr_dxy, ddxy_fix$dxy_rel) %>%
 
 tdxy_boot %>%
   write.table('data-gene-dxy/dxy-gene-bootstrap.tsv',
+              sep = "\t",
+              quote = F,
+              row.names = F)
+tdxy_boot %>%
+  write.table('data/tdxy_boot.tsv',
               sep = "\t",
               quote = F,
               row.names = F)

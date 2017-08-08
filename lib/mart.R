@@ -1,6 +1,7 @@
-library(biomaRt)
+# library(biomaRt)
+# keep BioC out of the namespace 
 
-mart <- useMart("ENSEMBL_MART_ENSEMBL", "tguttata_gene_ensembl", host="www.ensembl.org")
+mart <- biomaRt::useMart("ENSEMBL_MART_ENSEMBL", "tguttata_gene_ensembl", host="www.ensembl.org")
 
 # encode islands into biomart's format
 encode_wins <- function(dwins)
@@ -13,7 +14,7 @@ encode_wins <- function(dwins)
 genes_from_regions <- function(regions) {
   # need to query only single 'tab' in mart,
   # so no go terms here..
-  getBM(c("ensembl_gene_id", 
+  biomaRt::getBM(c("ensembl_gene_id", 
           "ensembl_transcript_id", 
           "ggallus_homolog_ensembl_gene", 
           "ggallus_homolog_orthology_type", 

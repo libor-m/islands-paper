@@ -35,6 +35,7 @@ points_to_wins <- function(dpoints, win_size=1e6, margin=1)
     mutate(zf_start=pmax(zf_pos - win_size / 2, 0), 
            zf_end=zf_pos + win_size / 2) %>%
     select(chrom, zf_start, zf_end) %>%
+    filter(!is.na(zf_start)) %>%
     reduce_intervals_zf(margin)
 
 # overlap intersection
