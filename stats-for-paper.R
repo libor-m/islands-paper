@@ -2,10 +2,7 @@
 # calculate some basic stats on the data
 # to report in the paper
 #
-library(dplyr)
-library(readr)
-library(ggplot2)
-library(tidyr)
+library(tidyverse)
 
 read_delim("data-genome/vars-melted.tsv",
            delim = " ",
@@ -78,7 +75,6 @@ dislands %>%
             max=max(length)) %>%
   write.table("clipboard", sep="\t", row.names=F)
 
-
 # zf chromosome length ----
 
 daf_fst %>%
@@ -140,4 +136,41 @@ daf_fst %>%
   ggplot(aes(fst, fill=autosome)) + 
   geom_density(colour=NA, alpha=0.7, adjust=3)
 
-  
+
+# check how big are the gaps between variants
+daf_fst %>%
+  group_by(chrom) %>%
+  mutate(pos_fix = coalesce(zf_pos, zf_max),
+         pos_lag = lag(pos_fix),
+         dist = pos_fix - pos_lag) %>%
+  ggplot(aes(dist)) +
+  geom_histogram() +
+  scale_y_log10()
+
+# count variants in windows
+ovr %>%
+  group_by(chrom, window_midpoint) %>%
+  summarise(n = n()) %>%
+  ggplot(aes(n)) +
+  geom_histogram() +
+  xlim(0, 1000)
+
+# number of variants in window per chromosome
+ovr %>%
+  filter(chrom != "chrUn",
+         !grepl("_random$", chrom)) %>%
+  mutate(chrom = chrom %>% factor(levels=chrom %>% unique %>% (gtools::mixedsort))) %>%
+  group_by(chrom, window_midpoint) %>%
+  summarise(n = n()) %>%
+  ggplot(aes(chrom, n)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 60))
+ggsave('results/variants-per-window-boxplot.pdf', width = 10, height = 8)
+
+# 
+ovr %>%
+  filter(chrom != "chrUn",
+         !grepl("_random$", chrom)) %>%
+  count(chrom, window_midpoint) %>% 
+  ungroup %>%
+  summarise(mean = mean(n), median = median(n))

@@ -14,7 +14,8 @@
 #
 library(tidyverse)
 
-library(data.table)
+# library(data.table)
+setDT <- data.table::setDT
 
 find_variants <- function(vars, window_size=1e6, stride=1e5) {
 
@@ -37,7 +38,7 @@ find_variants <- function(vars, window_size=1e6, stride=1e5) {
     select(chrom, start) %>% 
     mutate(end = start + window_size) %>%
     setDT %>%
-    setkey(chrom, start, end) ->
+    data.table::setkey(chrom, start, end) ->
     dt_wins
 
   # insert variants with unsure mapping to genome
@@ -46,7 +47,7 @@ find_variants <- function(vars, window_size=1e6, stride=1e5) {
   # is not)
   vars %>%
     mutate(start = coalesce(zf_pos, zf_min),
-           end = coalesce(zf_pos + 1, zf_max),
+           end = coalesce(zf_pos + 1L, zf_max),
            src_row = row_number()) %>%
     select(chrom, start, end, src_row) %>% 
     setDT ->
@@ -55,7 +56,7 @@ find_variants <- function(vars, window_size=1e6, stride=1e5) {
   # for each interval find variants which fall into it
   # dt_wins is small table with large spans
   # dt_vars is big table
-  foverlaps(dt_vars, dt_wins) %>%
+  data.table::foverlaps(dt_vars, dt_wins) %>%
     mutate(window_midpoint = start + window_size / 2) -> 
     dt_hits
 }
