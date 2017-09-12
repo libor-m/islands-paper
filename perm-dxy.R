@@ -56,7 +56,7 @@ ddxy %>%
 
 #### the bootstrap ####
 
-source('bootstrap.R')
+source('lib/bootstrap.R')
 
 # rename columns to work with find_variants
 # and run find_variants

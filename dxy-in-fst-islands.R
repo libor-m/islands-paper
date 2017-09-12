@@ -1,5 +1,5 @@
 # 
-# mapping per contig dxy into fst islands
+# mapping per contig dxy into fst islands ----
 #
 
 library(tidyverse)
@@ -11,6 +11,7 @@ source('lib/gene-set-enrichment.R')
 read_tsv('data/d_wins.tsv') %>%
   filter(measure == "Fst") -> d_wins
 
+# paper revision 0
 read_tsv('data-gene-dxy/contigs_dxy_avg_to_fst_isl.txt') %>%
   rename(chrom = zf_contig_chrom,
          start = zf_contig_start,
@@ -18,6 +19,7 @@ read_tsv('data-gene-dxy/contigs_dxy_avg_to_fst_isl.txt') %>%
   mutate(dxy_rel = dxy_abs / contig_length) ->
   ddxy
 
+# paper revision 1
 read_tsv('data-gene-dxy/dxy_abs_by_contig.tab') %>%
   rename(
     chrom = ZF_CONTIG_CHROM,
@@ -80,7 +82,7 @@ read_tsv("data-gene-dxy/contigs-in-fst-wins.tsv") -> dovr
 
 # mean relative  dxy per island
 dovr %>%
-  group_by(chrom, start, end) %>%
+  group_by(chrom, start, end, id) %>%
   summarise(dxy_rel_mean = dxy_rel %>% mean) %>%
   ungroup ->
   dovrmean
@@ -109,7 +111,7 @@ d_join %>%
   mean ->
   mean_genome_dxy
 
-# get the genes in selected windows
+# get the genes in selected windows ----
 source("lib/mart.R")
 
 dovrmean %>%
@@ -126,8 +128,15 @@ dovrmean %>%
 int_genes %>%
   write.table("data-gene-dxy/fst-high-dxy-islands-ensgenes.tsv", sep="\t", row.names=F, quote=F)
 
+# do the tests ----
 
-kegg$pathway_genid %>% write.table("data-annot/pathway_ensgene.tsv", quote=F, row.names=F, sep="\t")
+source('lib/gene-set-enrichment.R')
+
+# kegg <- kegg_get_data('tgu', 'ensembl-tgu')
+kegg <- kegg_get_data_offline()
+read_tsv('data-annot/uni_go.tsv') -> uni_go
+
+# kegg$pathway_genid %>% write.table("data-annot/pathway_ensgene.tsv", quote=F, row.names=F, sep="\t")
 
 # here the question is what to use as a background
 # - the whole universe: uni_go: uni_go$ensembl_gene_id
@@ -181,3 +190,36 @@ int_genes %>%
 
 read_tsv('data-gene-dxy/fst-high-dxy-islands-ensgenes.tsv') -> int_high
 setdiff(int_genes, int_high) -> int_low
+
+
+# genes in Fst islands with lower Dxy ----
+
+dovrmean %>%
+  filter(dxy_rel_mean < mean_genome_dxy) %>%
+  encode_wins %>%
+  genes_from_regions ->
+  int_genes
+
+int_genes %>%
+  write.table("data-gene-dxy/fst-low-dxy-islands-ensgenes.tsv", sep="\t", row.names=F, quote=F)
+
+test_enrichment(unique(int_genes$ensembl_gene_id),
+                unique(uni_go$ensembl_gene_id),
+                kegg$pathway_genid,
+                kegg$pathway_desc) %>%
+  arrange(p.fisher) %>%
+  View
+
+# directly save the results
+test_enrichment(unique(int_genes$ensembl_gene_id),
+                unique(uni_go$ensembl_gene_id),
+                kegg$pathway_genid,
+                kegg$pathway_desc) %>%
+  arrange(p.fisher) %>%
+  filter(p.fisher <= 0.05) %>%
+  as.data.frame %>%
+  format(digits = 3) %>%
+  write.table("results/KEGG-fst99-dxy-lt-mean-1M.txt", 
+              sep = "\t", 
+              row.names = F, 
+              quote = F)

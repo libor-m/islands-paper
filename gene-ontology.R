@@ -141,6 +141,7 @@ kegg_enrich_universe %>%
     quote = F
   )
 
+# once again, for fst islands only
 test_enrichment(unique(int_genes$ensembl_gene_id),
                 unique(uni_go$ensembl_gene_id),
                 kegg$pathway_genid,

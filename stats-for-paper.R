@@ -50,12 +50,12 @@ dvh %>%
 ggsave('results/lp2-var-filtered-DP.png', width=6, height=6, dpi=72)
 
 # how many islands
-read_delim("data/d_wins.tsv", " ", col_names = T) ->
+read_tsv("data/d_wins.tsv") ->
   dislands
 
 dislands %>%
   group_by(measure) %>%
-  summarise(n=n(), size=sum(end - start))
+  summarise(n = n(), size = sum(end - start))
 
 # the window size is a bit dominated by the 1M window around each 
 # positive value, but for Fst it looks 
@@ -78,7 +78,9 @@ dislands %>%
             max=max(length)) %>%
   write.table("clipboard", sep="\t", row.names=F)
 
-# zf chromosome length
+
+# zf chromosome length ----
+
 daf_fst %>%
   group_by(autosome = !(chrom %in% c("chrZ", "chrZ_random"))) %>%
   summarize(len = max(zf_max))
@@ -96,6 +98,37 @@ dislands %>%
   spread(autosome, len) %>%
   mutate(autosome = autosome / 175120622,
          chrZ = chrZ / 72831270)
+
+# chrom size versus bases covered in islands
+
+daf_fst %>%
+  group_by(chrom) %>%
+  summarize(chrom_size = max(zf_max)) %>%
+  left_join(dislands %>% 
+              filter(measure == "Fst") %>%
+              group_by(chrom) %>%
+              summarise(in_fst_wins = sum(end - start)),
+            by = "chrom") %>%
+  filter(!is.na(in_fst_wins)) %>%
+  ggplot(aes(chrom_size, in_fst_wins)) +
+  geom_text(aes(label = chrom)) +
+  geom_smooth(method = "lm")
+
+# count fst windows
+daf_fst %>%
+  group_by(chrom) %>%
+  summarize(chrom_size = max(zf_max)) %>%
+  left_join(dislands %>% 
+              filter(measure == "Fst") %>%
+              group_by(chrom) %>%
+              summarise(fst_wins = n()),
+            by = "chrom") %>%
+  filter(!is.na(fst_wins)) %>%
+  ggplot(aes(chrom_size, fst_wins)) +
+  geom_text(aes(label = chrom)) +
+  geom_smooth(method = "lm")
+
+# TODO: chisq
 
 # average Fst
 daf_fst %>%

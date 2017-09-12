@@ -32,7 +32,7 @@ source("lib/bootstrap.R")
 
 # a few checks
 
-system.time(ovr <- find_variants(daf))
+system.time(ovr <- find_variants(daf_fst))
 # 11 seconds
 # .37 seconds with data.table
 
