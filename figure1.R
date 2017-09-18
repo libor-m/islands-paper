@@ -67,3 +67,29 @@ tfst_boot %>%
 
 # 31 panels, we want ~3 cm per panel, that is 31 * 30
 ggsave('results/figure1-src-rev1.pdf', width = 290, height = 900, unit = "mm")
+
+tfst_boot %>%
+  filter(!grepl("random|LG", chrom)) %>%
+  sortchrom %>%
+  ggplot(aes(zf_pos)) +
+  geom_line(aes(y = Fst),
+            colour = "firebrick") +
+  geom_line(aes(y = Bootstrap),
+            colour = "#999999") +
+  geom_line(aes(group = id,
+                colour = dxy_rel > dxy_genomic_mean),
+            y = -.1,
+            size = 3,
+            data = dovr_long %>%
+                     filter(!grepl("random", chrom)) %>%
+                     sortchrom) +
+  facet_wrap(~chrom,
+             ncol = 1,
+             strip.position = "left") +
+  xlim(0, 3e8) +
+  ylim(-0.1, 0.3) +
+  scale_colour_manual(values = c("FALSE" = "#aaaaaa",
+                                 "TRUE" = "firebrick"),
+                      guide = "none")
+
+ggsave('results/figure1-src-rev1-both.pdf', width = 290, height = 900, unit = "mm")
