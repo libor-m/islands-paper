@@ -2,3 +2,4 @@ data*/
 *.pyc
 .Rhistory
 .Rproj.user
+.DS_Store
