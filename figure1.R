@@ -28,6 +28,12 @@ dovr %>%
   ungroup ->
   dovr_long
 
+# overview
+dovr_long %>%
+  filter(type == "start") %>%
+  mutate(high_dxy = dxy_rel > dxy_genomic_mean) %>%
+  count(high_dxy)
+
 # plot Fst in single line ----
 
 tfst_boot %>%
@@ -288,3 +294,111 @@ tdxy_boot %>%
                       guide = "none")
   
 ggsave('results/figure1-src-rev1-dxy.pdf', width = 290, height = 210, unit = "mm")
+
+# one super mega figure ----
+
+# load the data again without renaming
+read_tsv("data/tfst_boot.tsv") %>% 
+  filter(measure == "Fst") %>%
+  select(chrom, zf_pos, smooth, Bootstrap=boot_q99) ->
+  tfst_boot1
+
+# get ddxy and dovr from dxy-in-fst-islands.R
+ddxy$dxy_rel %>% mean -> dxy_genomic_mean
+
+read_tsv("data/tdxy_boot.tsv") %>%
+  filter(measure == "Dxy") %>%
+  select(chrom, zf_pos, smooth, Bootstrap = boot_q99) ->
+  tdxy_boot1
+
+rescale <- function(vec, lims=range(vec), clip=c(0, 1)) {
+  # find the coeficients of transforming linear equation
+  # that maps the lims range to (0, 1)
+  slope <- (1 - 0) / (lims[2] - lims[1])
+  intercept <- - slope * lims[1]
+  
+  xformed <- slope * vec + intercept
+  
+  # do the clipping
+  xformed[xformed < 0] <- clip[1]
+  xformed[xformed > 1] <- clip[2]
+  
+  xformed
+}
+
+prepare <- function(data, offset = 0) {
+  data %>%
+    filter(chrom %in% display_chroms) %>%
+    left_join(chrom_panels, by = "chrom") %>%
+    mutate(pos = zf_pos + offset_panel)
+}
+
+mbases <- function(x) {
+  x <- plyr::round_any(x, 1e4)
+  paste(x / 1e6, "MB")
+}
+           
+tibble() %>%
+
+  ggplot(aes(pos, group = chrom)) +
+  
+  # Dxy with mean
+  geom_hline(yintercept = rescale(dxy_genomic_mean, c(0, 0.01)) + 1,
+           colour = "#999999") +
+  geom_line(aes(y = smooth),
+            colour = "seagreen",
+            data = tdxy_boot1 %>%
+              prepare %>%
+              mutate(smooth = rescale(smooth, c(0, 0.01)) + 1)) +
+  
+  # Fst with bootstrap
+  geom_line(aes(y = Bootstrap),
+            colour = "#999999",
+            data = tfst_boot1 %>%
+              prepare %>%
+              mutate(Bootstrap = rescale(Bootstrap, c(0, 0.3)))) +
+  geom_line(aes(y = smooth),
+            colour = "firebrick",
+            data = tfst_boot1 %>%
+              prepare %>%
+              mutate(smooth = rescale(smooth, c(0, 0.3)))) +
+  
+  # islands marks below
+  geom_line(aes(group = id,
+                colour = dxy_rel > dxy_genomic_mean),
+            y = -.1,
+            size = 3,
+            data = dovr_long %>%
+                     prepare) +
+  
+  # chromosome labels with hacky width of the rect
+  # override shared x to something existing, otherwise the layer fails
+  geom_rect(aes(x=offset_panel, xmin = offset_panel - 7e6, xmax = offset_panel),
+            ymin = -Inf,
+            ymax = Inf,
+            fill = "#cccccc",
+            data = chrom_panels) +
+  geom_text(aes(offset_panel, label = chrom),
+            angle = 90,
+            y = 1,
+            hjust = "center",
+            vjust = -0.3,
+            data = chrom_panels) +
+  
+  facet_wrap(~panel,
+             ncol = 1,
+             strip.position = "right") +
+  ylim(-.1, 2) +
+  xlab("Genome position") +
+  ylab("") +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_blank()) +
+  scale_x_continuous(limits = c(-5e6, panel_size),
+                     labels = mbases) +
+  scale_colour_manual(values = c("FALSE" = "#aaaaaa",
+                                 "TRUE" = "firebrick"),
+                      guide = "none")
+
+ggsave('results/figure1-src-rev1-everything.pdf', width = 290, height = 205, unit = "mm")
