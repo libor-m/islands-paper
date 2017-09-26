@@ -3,7 +3,7 @@
 #
 
 library(tidyverse)
-library(data.table)
+# library(data.table)
 
 source('lib/gene-set-enrichment.R')
 
@@ -37,9 +37,11 @@ read_tsv('data-gene-dxy/dxy_abs_by_contig.tab') %>%
 
 # d_wins is small table with large spans (-> y, keyed)
 # ddxy is big table -> x
-setkey(setDT(d_wins), chrom, start, end)
+# reach into different universe (of data.table) for the awesome
+# `foverlaps` function
+data.table::setkey(data.table::setDT(d_wins), chrom, start, end)
 
-foverlaps(setDT(ddxy), d_wins, type = "within") ->
+data.table::foverlaps(data.table::setDT(ddxy), d_wins, type = "within") ->
   d_join
 
 d_join %>%
