@@ -395,7 +395,7 @@ tibble() %>%
         axis.ticks.y = element_blank(),
         strip.background = element_blank(),
         strip.text = element_blank()) +
-  scale_x_continuous(limits = c(-5e6, panel_size),
+  scale_x_continuous(limits = c(-7e6, panel_size),
                      labels = mbases) +
   scale_colour_manual(values = c("FALSE" = "#aaaaaa",
                                  "TRUE" = "firebrick"),
